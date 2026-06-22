@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>政府採購標案彙整工具</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Microsoft JhengHei', '微軟正黑體', sans-serif; background: #f0f4f8; color: #2d3748; min-height: 100vh; }
+.container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+header { background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%); color: white; padding: 20px 24px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px; }
+header .icon { font-size: 36px; }
+header h1 { font-size: 22px; font-weight: 700; }
+header p { font-size: 13px; opacity: 0.8; margin-top: 2px; }
+.card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04); }
+.card h2 { font-size: 15px; font-weight: 700; color: #1a365d; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+label { display: block; font-size: 13px; font-weight: 600; color: #4a5568; margin-bottom: 5px; }
+input[type="url"], input[type="text"] {
+  width: 100%; padding: 9px 12px; border: 1.5px solid #e2e8f0; border-radius: 7px;
+  font-size: 14px; margin-bottom: 14px; transition: border-color 0.2s;
+  font-family: inherit;
+}
+input:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 3px rgba(43,108,176,0.1); }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+.btn { padding: 10px 18px; border: none; border-radius: 7px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: #2b6cb0; color: white; }
+.btn-primary:hover:not(:disabled) { background: #2c5282; transform: translateY(-1px); }
+.btn-success { background: #276749; color: white; }
+.btn-success:hover { background: #22543d; }
+.btn-info { background: #2c7a7b; color: white; }
+.btn-info:hover { background: #285e61; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.status-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.spinner { width: 18px; height: 18px; border: 2.5px solid #bee3f8; border-top-color: #2b6cb0; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#status-text { font-size: 13px; color: #4a5568; font-weight: 500; }
+.progress-wrap { background: #e2e8f0; border-radius: 4px; height: 5px; margin-top: 10px; display: none; }
+.progress-bar { background: linear-gradient(90deg, #2b6cb0, #4299e1); height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.log-wrap { background: #1a202c; border-radius: 8px; padding: 14px 16px; max-height: 260px; overflow-y: auto; display: none; font-family: 'Courier New', Consolas, monospace; font-size: 12.5px; }
+.log-wrap .entry { padding: 1.5px 0; line-height: 1.6; }
+.log-wrap .entry.step  { color: #63b3ed; }
+.log-wrap .entry.ok    { color: #68d391; }
+.log-wrap .entry.warn  { color: #f6e05e; }
+.log-wrap .entry.err   { color: #fc8181; }
+.log-wrap .entry.info  { color: #a0aec0; }
+.tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #ebf8ff; color: #2b6cb0; }
+.actions { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.table-wrap { overflow-x: auto; border-radius: 7px; border: 1px solid #e2e8f0; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+thead tr { background: #1a365d; color: white; }
+th { padding: 10px 10px; text-align: left; font-weight: 600; white-space: nowrap; }
+td { padding: 8px 10px; border-bottom: 1px solid #edf2f7; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #f7fafc; }
+.empty-state { text-align: center; padding: 48px; color: #a0aec0; }
+.empty-state .icon { font-size: 40px; margin-bottom: 8px; }
+.notice { background: #fffbeb; border: 1px solid #f6e05e; border-radius: 7px; padding: 12px 14px; font-size: 13px; color: #744210; line-height: 1.6; margin-top: 12px; }
+.notice strong { color: #92400e; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="icon">🏛️</div>
+    <div>
+      <h1>政府採購標案彙整工具</h1>
+      <p>自動爬取政府電子採購網 ＋ 台灣採購公報網，彙整決標資訊</p>
+    </div>
+  </header>
+
+  <!-- 設定區 -->
+  <div class="card">
+    <h2>⚙️ 查詢設定</h2>
+    <label for="startUrl">政府採購網網址（含機關資訊的頁面）</label>
+    <input type="url" id="startUrl" placeholder="https://web.pcc.gov.tw/prkms/..." />
+
+    <div class="row">
+      <div>
+        <label for="keywords">篩選關鍵字（逗號分隔）</label>
+        <input type="text" id="keywords" value="設計,監造,耐震,補強,技術" />
+      </div>
+      <div>
+        <label for="lookbackDays">決標查詢回溯天數</label>
+        <input type="text" id="lookbackDays" value="180" />
+      </div>
+    </div>
+
+    <div class="status-row">
+      <button class="btn btn-primary" id="startBtn" onclick="startScraping()">🔍 開始爬取</button>
+      <div class="spinner" id="spinner"></div>
+      <span id="status-text"></span>
+    </div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar" style="width:0%"></div>
+    </div>
+
+    <div class="notice">
+      <strong>注意：</strong>本工具透過 CORS Proxy 存取政府網站，首次使用速度較慢屬正常現象。若某步驟卡住超過 30 秒，可重新整理後再試。爬取過程請勿關閉頁面。
+    </div>
+  </div>
+
+  <!-- 執行日誌 -->
+  <div class="log-wrap" id="log"></div>
+
+  <!-- 結果區 -->
+  <div class="card" id="resultsCard" style="display:none">
+    <h2>📊 查詢結果 <span class="tag" id="resultCount">0 筆</span></h2>
+    <div class="actions">
+      <button class="btn btn-success" onclick="downloadCSV()">⬇ 下載 CSV</button>
+      <button class="btn btn-info" onclick="copyForSheets()">📋 複製貼到 Google Sheets</button>
+    </div>
+    <div class="table-wrap">
+      <div id="resultsTable"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// 設定
+// ═══════════════════════════════════════════════════════
+const PROXY = 'https://corsproxy.io/?';
+const PROXY2 = 'https://api.allorigins.win/raw?url=';
+const TAIWANBUYING = 'https://www.taiwanbuying.com.tw';
+const PCC_SEARCH   = 'https://web.pcc.gov.tw/prkms/tender/common/agent/indexTenderAgent';
+
+let results = [];
+let agencyNameGlobal = '';
+let isRunning = false;
+
+// ═══════════════════════════════════════════════════════
+// Cookie Jar
+// ═══════════════════════════════════════════════════════
+const cookieJar = {
+  store: {},   // domain → { name: value }
+  update(domain, headerVal) {
+    if (!headerVal) return;
+    // Split multiple Set-Cookie (comma separated, but cookies can have commas in expiry)
+    const parts = headerVal.split(/(?<=\S),(?=\s*\w+=)/);
+    parts.forEach(part => {
+      const m = part.trim().match(/^([^=;]+)=([^;]*)/);
+      if (m) {
+        if (!this.store[domain]) this.store[domain] = {};
+        this.store[domain][m[1].trim()] = m[2].trim();
+      }
+    });
+  },
+  getStr(url) {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '');
+      const out = [];
+      for (const [dom, kv] of Object.entries(this.store)) {
+        if (host.endsWith(dom) || dom.endsWith(host)) {
+          for (const [k, v] of Object.entries(kv)) out.push(`${k}=${v}`);
+        }
+      }
+      return out.join('; ');
+    } catch { return ''; }
+  },
+};
+
+// ═══════════════════════════════════════════════════════
+// Fetch Helpers
+// ═══════════════════════════════════════════════════════
+async function proxyFetch(url, opts = {}, useProxy2 = false) {
+  const proxy = useProxy2 ? PROXY2 : PROXY;
+  const cookies = cookieJar.getStr(url);
+  const headers = { ...(opts.headers || {}) };
+  if (cookies) headers['x-cookie'] = cookies;
+
+  const resp = await fetch(proxy + encodeURIComponent(url), {
+    method: opts.method || 'GET',
+    headers,
+    body: opts.body || undefined,
+  });
+
+  const domain = new URL(url).hostname.replace(/^www\./, '');
+  const sc = resp.headers.get('set-cookie') || resp.headers.get('x-set-cookie') || '';
+  if (sc) cookieJar.update(domain, sc);
+
+  return resp;
+}
+
+async function fetchHTML(url, opts = {}) {
+  let resp;
+  try {
+    resp = await proxyFetch(url, opts, false);
+  } catch (e) {
+    // fallback to second proxy (GET only)
+    resp = await proxyFetch(url, {}, true);
+  }
+
+  const buf = await resp.arrayBuffer();
+  const peek = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(buf).slice(0, 2000));
+  const enc  = /charset=["\']?big5/i.test(peek) ? 'big5' :
+               /charset=["\']?gb2312/i.test(peek) ? 'gb2312' : 'utf-8';
+  return new TextDecoder(enc, { fatal: false }).decode(buf);
+}
+
+function dom(html) {
+  return new DOMParser().parseFromString(html, 'text/html');
+}
+
+// ═══════════════════════════════════════════════════════
+// UI Helpers
+// ═══════════════════════════════════════════════════════
+function log(msg, type = 'info') {
+  const el = document.getElementById('log');
+  el.style.display = 'block';
+  const d = document.createElement('div');
+  d.className = 'entry ' + type;
+  d.textContent = `${new Date().toLocaleTimeString()} ${msg}`;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStatus(msg) { document.getElementById('status-text').textContent = msg; }
+
+function setProgress(pct) {
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressBar').style.width = Math.min(pct, 100) + '%';
+}
+
+async function delay(min = 800, max = 2000) {
+  return new Promise(r => setTimeout(r, min + Math.random() * (max - min)));
+}
+
+// ═══════════════════════════════════════════════════════
+// 階段一：取得機關名稱
+// ═══════════════════════════════════════════════════════
+async function getAgencyName(url) {
+  log(`[1] 訪問起始網址…`, 'step');
+  const html = await fetchHTML(url);
+  const doc  = dom(html);
+
+  // DOM traversal: find <th> or <td> with text "機關名稱" then next sibling
+  for (const cell of doc.querySelectorAll('th, td')) {
+    const t = cell.textContent.trim();
+    if (t === '機關名稱' || t === '機 關 名 稱') {
+      const next = cell.nextElementSibling;
+      if (next) { const v = next.textContent.trim(); if (v) return v; }
+    }
+  }
+
+  // Regex fallback on raw html
+  const m = html.match(/機關名稱[^<]{0,10}<\/t[dh]>\s*<t[dh][^>]*>\s*([^<\n\r]{2,40})/);
+  if (m) return m[1].replace(/&amp;/g, '&').trim();
+
+  // Second regex fallback (inline text)
+  const m2 = html.match(/機關名稱[：:\s＊\*]{0,4}([^\s<&]{2,30})/);
+  if (m2) return m2[1].trim();
+
+  throw new Error('找不到「機關名稱」欄位，請確認網址是否指向機關採購資訊頁面');
+}
+
+// ═══════════════════════════════════════════════════════
+// 階段二～三：台灣採購公報網
+// ═══════════════════════════════════════════════════════
+async function fetchMatchingCases(agency) {
+  const keywords = document.getElementById('keywords').value
+    .split(',').map(k => k.trim()).filter(Boolean);
+
+  // ── 搜尋機關 ──
+  log(`[2] 搜尋公報網機關：${agency}`, 'step');
+  const body = new URLSearchParams({ sUnit: agency, Submit: '查詢' }).toString();
+  const html1 = await fetchHTML(TAIWANBUYING + '/QueryCloseCase_Ori.ASP', {
+    method: 'POST', body,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+  await delay();
+
+  const doc1   = dom(html1);
+  const links1 = Array.from(doc1.querySelectorAll('a[href]'))
+    .filter(a => {
+      const h = a.getAttribute('href') || '';
+      return h && !h.startsWith('javascript') && a.textContent.trim().length > 0;
+    });
+
+  if (links1.length === 0) throw new Error(`公報網找不到「${agency}」`);
+
+  const firstHref = links1[0].getAttribute('href');
+  const firstUrl  = firstHref.startsWith('http') ? firstHref : TAIWANBUYING + '/' + firstHref.replace(/^\//, '');
+  log(`  → 第一筆：${links1[0].textContent.trim()}`, 'ok');
+
+  // ── 進入機關頁，找最新年份 ──
+  const html2 = await fetchHTML(firstUrl);
+  await delay();
+  const doc2 = dom(html2);
+
+  const yearLinks = Array.from(doc2.querySelectorAll('a[href]'))
+    .filter(a => /^\d{3,4}$/.test(a.textContent.trim()))
+    .sort((a, b) => parseInt(b.textContent) - parseInt(a.textContent));
+
+  if (yearLinks.length === 0) throw new Error('找不到年份連結');
+  const latestYear = yearLinks[0].textContent.trim();
+  log(`[2] 最新年份：${latestYear}`, 'step');
+
+  const yearHref = yearLinks[0].getAttribute('href');
+  const yearUrl  = yearHref.startsWith('http') ? yearHref : TAIWANBUYING + '/' + yearHref.replace(/^\//, '');
+  const html3    = await fetchHTML(yearUrl);
+  await delay();
+
+  // ── 掃描案件清單 ──
+  log(`[3] 掃描 ${latestYear} 年案件清單...`, 'step');
+  const doc3 = dom(html3);
+  const rows  = Array.from(doc3.querySelectorAll('table tr'));
+  const matched = [];
+
+  for (const row of rows) {
+    const rowText = row.textContent;
+    if (!keywords.some(kw => rowText.includes(kw))) continue;
+
+    const link = row.querySelector('a[href]');
+    if (!link) continue;
+
+    const caseName = link.textContent.trim() || row.querySelector('td')?.textContent.trim() || '';
+    log(`  ✓ 符合關鍵字：${caseName}`, 'ok');
+
+    const href    = link.getAttribute('href');
+    const detUrl  = href.startsWith('http') ? href : TAIWANBUYING + '/' + href.replace(/^\//, '');
+
+    try {
+      const detail = await fetchCaseDetail(detUrl, caseName);
+      if (detail) matched.push(detail);
+    } catch (e) {
+      log(`  ⚠ 明細頁失敗：${e.message}`, 'warn');
+    }
+    await delay(1200, 2800);
+  }
+
+  log(`[3] 篩出 ${matched.length} 筆`, 'step');
+  return matched;
+}
+
+async function fetchCaseDetail(url, fallbackName) {
+  const html = await fetchHTML(url);
+  const doc  = dom(html);
+
+  function field(...labels) {
+    for (const cell of doc.querySelectorAll('th, td')) {
+      if (labels.some(l => cell.textContent.trim().startsWith(l))) {
+        const nxt = cell.nextElementSibling;
+        if (nxt) { const v = nxt.textContent.trim(); if (v) return v; }
+      }
+    }
+    for (const label of labels) {
+      const esc = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const m = html.match(new RegExp(esc + '[：:\\s]{0,5}([^<\\s&]{2,80})'));
+      if (m) return m[1].trim();
+    }
+    return '';
+  }
+
+  let pubDate  = field('公布日期', '公告日期', '決標公告日期');
+  const tenId  = field('採購案號', '案號', '標案案號');
+  const tenNm  = field('採購名稱', '標案名稱', '案件名稱') || fallbackName;
+
+  if (!tenId) return null;
+
+  // 正規化成民國年 YYY/MM/DD
+  if (pubDate) {
+    const m = pubDate.match(/(\d{2,4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+    if (m) {
+      let y = parseInt(m[1]);
+      if (y > 1000) y -= 1911;   // 西元 → 民國
+      pubDate = `${y}/${String(m[2]).padStart(2,'0')}/${String(m[3]).padStart(2,'0')}`;
+    }
+  }
+
+  return { publishDate: pubDate, tenderId: tenId, tenderName: tenNm };
+}
+
+// ═══════════════════════════════════════════════════════
+// 日期工具
+// ═══════════════════════════════════════════════════════
+function rocToJSDate(roc) {
+  const [y, m, d] = roc.split('/').map(Number);
+  return new Date(y + 1911, m - 1, d);
+}
+
+function jsDateToRoc(dt) {
+  return `${dt.getFullYear() - 1911}/${String(dt.getMonth() + 1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// 階段四～五：政府採購網決標查詢
+// ═══════════════════════════════════════════════════════
+async function queryPCCAward(caseData) {
+  const { tenderId, publishDate, tenderName } = caseData;
+  const lookback = parseInt(document.getElementById('lookbackDays').value) || 180;
+
+  let endRoc   = publishDate;
+  let startRoc = '';
+  if (publishDate) {
+    const end   = rocToJSDate(publishDate);
+    const start = new Date(end);
+    start.setDate(start.getDate() - lookback);
+    startRoc = jsDateToRoc(start);
+    endRoc   = jsDateToRoc(end);
+  }
+
+  log(`[4] 查詢採購網：${tenderId}（${startRoc} ~ ${endRoc}）`, 'step');
+
+  // Try GET with query params first (some PCC pages support it)
+  const qs = new URLSearchParams({
+    pkAtmMain: tenderId || '',
+    tenderStartDate: startRoc,
+    tenderEndDate: endRoc,
+    radProc: 'G',   // 決標公告
+  });
+
+  const html = await fetchHTML(`${PCC_SEARCH}?${qs}`);
+  await delay();
+  const doc  = dom(html);
+
+  // Find matching row
+  const rows = Array.from(doc.querySelectorAll('table tr'));
+  for (const row of rows) {
+    const rowTxt = row.textContent;
+    if (!rowTxt.includes(tenderId) && !(tenderName && rowTxt.includes(tenderName.slice(0, 6)))) continue;
+
+    const viewLink = row.querySelector('a[href]');
+    if (!viewLink) continue;
+
+    const href = viewLink.getAttribute('href');
+    const detailUrl = href.startsWith('http') ? href : 'https://web.pcc.gov.tw' + href;
+
+    log(`  → 找到符合列，進入決標公告`, 'ok');
+    return await extractAwardInfo(detailUrl, caseData);
+  }
+
+  log(`  ⚠ 採購網查無結果：${tenderId}`, 'warn');
+  return null;
+}
+
+async function extractAwardInfo(url, caseData) {
+  const html = await fetchHTML(url);
+  const doc  = dom(html);
+
+  function field(...labels) {
+    for (const cell of doc.querySelectorAll('th, td')) {
+      if (labels.some(l => cell.textContent.trim().startsWith(l))) {
+        const nxt = cell.nextElementSibling;
+        if (nxt) { const v = nxt.textContent.replace(/\s+/g, ' ').trim(); if (v) return v; }
+      }
+    }
+    for (const label of labels) {
+      const esc = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const m = html.match(new RegExp(esc + '[：:\\s]{0,5}([^<]{2,100})'));
+      if (m) return m[1].replace(/\s+/g, ' ').trim();
+    }
+    return '';
+  }
+
+  return {
+    '機關名稱':         field('機關名稱') || agencyNameGlobal,
+    '決標日期':         field('決標日期', '公告日期'),
+    '標案名稱':         field('標案名稱', '採購名稱') || caseData.tenderName,
+    '投標廠商家數':     field('投標廠商家數', '廠商家數'),
+    '新增公告傳輸次數': field('新增公告傳輸次數', '傳輸次數'),
+    '得標廠商':         field('得標廠商', '廠商名稱', '廠商資料'),
+    '決標金額':         field('決標金額', '決標價格'),
+    '_案號':            caseData.tenderId,
+    '_公布日期':        caseData.publishDate,
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// 匯出
+// ═══════════════════════════════════════════════════════
+const COLS = ['機關名稱','決標日期','標案名稱','投標廠商家數','新增公告傳輸次數','得標廠商','決標金額','來源案號','公布日期'];
+
+function rowArr(r) {
+  return [r['機關名稱'],r['決標日期'],r['標案名稱'],r['投標廠商家數'],r['新增公告傳輸次數'],r['得標廠商'],r['決標金額'],r['_案號'],r['_公布日期']];
+}
+
+function downloadCSV() {
+  const lines = [COLS.join(',')];
+  for (const r of results) {
+    lines.push(rowArr(r).map(v => `"${(v||'').replace(/"/g,'""')}"`).join(','));
+  }
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${agencyNameGlobal || '採購標案'}彙整.csv`;
+  a.click();
+}
+
+function copyForSheets() {
+  const lines = [COLS.join('\t')];
+  for (const r of results) lines.push(rowArr(r).map(v => v||'').join('\t'));
+  navigator.clipboard.writeText(lines.join('\n')).then(
+    () => alert('✅ 已複製！\n\n請到 Google Sheets 新工作表，點 A1 儲存格後按 Ctrl+V（Mac: ⌘V）貼上。'),
+    () => alert('複製失敗，請改用「下載 CSV」後匯入 Google Sheets。')
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+// 渲染結果表格
+// ═══════════════════════════════════════════════════════
+function renderResults() {
+  document.getElementById('resultsCard').style.display = 'block';
+  document.getElementById('resultCount').textContent = `${results.length} 筆`;
+
+  const container = document.getElementById('resultsTable');
+  if (results.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><div>沒有找到符合條件的標案</div></div>';
+    return;
+  }
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const hrow  = document.createElement('tr');
+  COLS.forEach(h => { const th = document.createElement('th'); th.textContent = h; hrow.appendChild(th); });
+  thead.appendChild(hrow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  for (const r of results) {
+    const tr = document.createElement('tr');
+    rowArr(r).forEach(v => {
+      const td = document.createElement('td');
+      td.textContent = v || '—';
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  container.innerHTML = '';
+  container.appendChild(table);
+}
+
+// ═══════════════════════════════════════════════════════
+// 主流程
+// ═══════════════════════════════════════════════════════
+async function startScraping() {
+  if (isRunning) return;
+  const startUrl = document.getElementById('startUrl').value.trim();
+  if (!startUrl) { alert('請輸入政府採購網網址'); return; }
+
+  isRunning = true;
+  results = [];
+  agencyNameGlobal = '';
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('log').style.display = 'none';
+  document.getElementById('resultsCard').style.display = 'none';
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('spinner').style.display = 'inline-block';
+  setProgress(3);
+
+  try {
+    // 階段一
+    setStatus('讀取機關資訊…');
+    agencyNameGlobal = await getAgencyName(startUrl);
+    log(`機關名稱：${agencyNameGlobal}`, 'ok');
+    setProgress(15);
+
+    // 階段二三
+    setStatus('搜尋公報網…');
+    const cases = await fetchMatchingCases(agencyNameGlobal);
+    setProgress(55);
+
+    // 階段四五
+    if (cases.length > 0) {
+      for (let i = 0; i < cases.length; i++) {
+        setStatus(`查詢決標資訊 ${i + 1}／${cases.length}…`);
+        setProgress(55 + 40 * (i + 1) / cases.length);
+        try {
+          const award = await queryPCCAward(cases[i]);
+          if (award) results.push(award);
+        } catch (e) {
+          log(`⚠ ${cases[i].tenderId} 決標查詢失敗：${e.message}`, 'warn');
+        }
+        await delay(1500, 3000);
+      }
+    }
+
+    setProgress(100);
+    log(`✅ 完成！共取得 ${results.length} 筆決標資料`, 'ok');
+    setStatus(`完成，共 ${results.length} 筆`);
+    renderResults();
+
+  } catch (e) {
+    log(`❌ 錯誤：${e.message}`, 'err');
+    setStatus('發生錯誤');
+    console.error(e);
+  } finally {
+    isRunning = false;
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('spinner').style.display = 'none';
+  }
+}
+</script>
+</body>
+</html>
