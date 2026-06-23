@@ -1,20 +1,19 @@
 name: 爬取政府採購標案
 
 on:
-  # 每天 08:30 台灣時間 (UTC+8) = UTC 00:30
-  schedule:
-    - cron: '30 0 * * *'
-  # 手動觸發
   workflow_dispatch:
     inputs:
+      start_url:
+        description: '政府採購網起始網址（必填）'
+        required: true
       keywords:
-        description: '關鍵字（逗號分隔，留空用預設值）'
+        description: '關鍵字（逗號分隔，留空用預設）'
         required: false
         default: '設計,監造,耐震,補強,技術'
       lookback_days:
-        description: '回溯天數'
+        description: '日期前後查詢範圍（天）'
         required: false
-        default: '90'
+        default: '180'
 
 jobs:
   scrape:
@@ -31,7 +30,17 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install chromium
+          playwright install-deps chromium
+
       - name: Run scraper
+        env:
+          START_URL: ${{ github.event.inputs.start_url }}
+          KEYWORDS: ${{ github.event.inputs.keywords }}
+          LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days }}
         run: python scraper/scraper.py
 
       - name: Commit results
@@ -40,5 +49,5 @@ jobs:
           git config user.email "actions@github.com"
           git add data/results.json
           git diff --staged --quiet && echo "No changes" || \
-            git commit -m "chore: update tender data $(date +'%Y-%m-%d %H:%M')"
+            git commit -m "chore: update tender data $(date +'%Y-%m-%d %H:%M') [$(echo '${{ github.event.inputs.start_url }}' | cut -c1-60)]"
           git push

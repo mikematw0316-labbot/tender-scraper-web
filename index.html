@@ -14,23 +14,31 @@ header h1 { font-size: 22px; font-weight: 700; }
 header p { font-size: 13px; opacity: 0.8; margin-top: 2px; }
 .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .card h2 { font-size: 15px; font-weight: 700; color: #1a365d; margin-bottom: 14px; }
-.info-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 14px; align-items: center; }
-.info-item { font-size: 13px; color: #4a5568; }
-.info-item strong { color: #2d3748; }
-.badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-.badge-ok   { background: #c6f6d5; color: #22543d; }
-.badge-warn { background: #feebc8; color: #7b341e; }
-.btn { padding: 10px 18px; border: none; border-radius: 7px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+.form-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 10px; }
+.form-row input[type="text"], .form-row input[type="password"] {
+  flex: 1; padding: 10px 13px; border: 1.5px solid #e2e8f0; border-radius: 7px;
+  font-size: 14px; font-family: inherit;
+}
+.form-row input:focus { outline: none; border-color: #2b6cb0; }
+.btn { padding: 10px 18px; border: none; border-radius: 7px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .btn-primary { background: #2b6cb0; color: white; }
 .btn-primary:hover:not(:disabled) { background: #2c5282; }
 .btn-success { background: #276749; color: white; }
 .btn-success:hover { background: #22543d; }
 .btn-info { background: #2c7a7b; color: white; }
 .btn-info:hover { background: #285e61; }
+.btn-gray { background: #e2e8f0; color: #4a5568; }
+.btn-gray:hover { background: #cbd5e0; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.actions { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
 .spinner { width: 18px; height: 18px; border: 2.5px solid #bee3f8; border-top-color: #2b6cb0; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; flex-shrink: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.status-box { background: #ebf8ff; border: 1px solid #bee3f8; border-radius: 7px; padding: 12px 14px; font-size: 13px; color: #2b6cb0; display: none; margin-top: 10px; }
+.status-box.error { background: #fff5f5; border-color: #feb2b2; color: #c53030; }
+.status-box.success { background: #f0fff4; border-color: #9ae6b4; color: #276749; }
+.info-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 14px; align-items: center; }
+.info-item { font-size: 13px; color: #4a5568; }
+.info-item strong { color: #2d3748; }
+.actions { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
 .filter-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
 .filter-row label { font-size: 13px; color: #4a5568; font-weight: 600; }
 .filter-row input[type="text"] { padding: 7px 11px; border: 1.5px solid #e2e8f0; border-radius: 7px; font-size: 13px; font-family: inherit; }
@@ -53,10 +61,12 @@ tbody tr:hover td { background: #f7fafc; }
 a.row-link { color: #2b6cb0; text-decoration: none; }
 a.row-link:hover { text-decoration: underline; }
 .result-count { font-size: 13px; color: #718096; margin-left: auto; }
-.gh-link { font-size: 12px; color: #a0aec0; text-decoration: none; }
-.gh-link:hover { color: #4a5568; }
-.trigger-note { font-size: 12px; color: #718096; margin-top: 6px; }
-.trigger-note a { color: #2b6cb0; }
+.hint { font-size: 12px; color: #718096; margin-top: 6px; }
+.hint a { color: #2b6cb0; }
+.settings-toggle { font-size: 12px; color: #718096; cursor: pointer; text-decoration: underline; }
+.settings-panel { display: none; background: #f7fafc; border-radius: 7px; padding: 14px; margin-top: 10px; border: 1px solid #e2e8f0; }
+.settings-panel label { font-size: 13px; font-weight: 600; color: #4a5568; display: block; margin-bottom: 4px; }
+.run-link { font-size: 13px; }
 </style>
 </head>
 <body>
@@ -66,16 +76,52 @@ a.row-link:hover { text-decoration: underline; }
     <div class="icon">🏛️</div>
     <div>
       <h1>政府採購標案彙整工具</h1>
-      <p>每日自動爬取政府電子採購網（決標公告）＋ 台灣採購公報網（招標公告）</p>
+      <p>輸入採購網網址 → 自動分析機關標案 → 彙整決標資料</p>
     </div>
   </header>
 
+  <!-- 觸發分析 -->
+  <div class="card">
+    <h2>🔍 輸入採購網網址，開始分析</h2>
+    <div class="form-row">
+      <input type="text" id="startUrl" placeholder="貼上政府電子採購網網址，例如：https://web.pcc.gov.tw/prkms/tender/..."
+             oninput="updateBtn()">
+      <button class="btn btn-primary" id="analyzeBtn" onclick="triggerScraper()" disabled>
+        🚀 開始分析
+      </button>
+    </div>
+    <div class="hint">
+      流程：自動取得機關名稱 → 查詢公報網案件 → 篩選關鍵字 → 彙整採購網決標資料<br>
+      完成後約需 <strong>10～20 分鐘</strong>（GitHub Actions 雲端執行），結果會自動更新在下方。
+    </div>
+
+    <!-- 設定（GitHub Token） -->
+    <div style="margin-top:10px">
+      <span class="settings-toggle" onclick="toggleSettings()">⚙️ 設定 GitHub Token</span>
+      <div class="settings-panel" id="settingsPanel">
+        <label>GitHub Personal Access Token（需有 workflow 權限）</label>
+        <div class="form-row" style="margin-bottom:6px">
+          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxx"
+                 oninput="saveToken(); updateBtn()">
+          <button class="btn btn-gray" onclick="clearToken()">清除</button>
+        </div>
+        <div class="hint">
+          Token 只存在你的瀏覽器，不會傳送到任何伺服器。<br>
+          申請方式：<a href="https://github.com/settings/tokens/new?scopes=workflow" target="_blank">GitHub → Settings → Developer settings → Personal access tokens</a>，勾選 <strong>workflow</strong> 權限。
+        </div>
+      </div>
+    </div>
+
+    <div class="status-box" id="triggerStatus"></div>
+  </div>
+
+  <!-- 結果狀態 -->
   <div class="card" id="statusCard">
     <h2>📊 資料狀態</h2>
     <div class="info-row" id="infoRow">
       <div class="info-item">資料更新時間：<strong id="updatedAt">載入中…</strong></div>
-      <div class="info-item">查詢關鍵字：<strong id="keywords">—</strong></div>
-      <div class="info-item">日期範圍：<strong id="dateRange">—</strong></div>
+      <div class="info-item">機關名稱：<strong id="agencyName">—</strong></div>
+      <div class="info-item">關鍵字：<strong id="keywords">—</strong></div>
       <div class="info-item">總筆數：<strong id="totalCount">—</strong></div>
     </div>
     <div class="actions">
@@ -85,22 +131,18 @@ a.row-link:hover { text-decoration: underline; }
       <div class="spinner" id="spinner"></div>
       <span id="statusMsg" style="font-size:13px;color:#718096"></span>
     </div>
-    <div class="trigger-note">
-      ⏰ 資料每天 <strong>08:30</strong> 自動更新。也可到
+    <div class="hint">
+      ⏰ 也可到
       <a href="https://github.com/mikematw0316-labbot/tender-scraper-web/actions" target="_blank">GitHub Actions</a>
-      手動觸發立即更新。
+      手動觸發或查看執行記錄。
     </div>
   </div>
 
+  <!-- 結果表格 -->
   <div class="card" id="resultsCard" style="display:none">
     <div class="filter-row">
       <label>篩選：</label>
       <input type="text" id="filterText" placeholder="輸入關鍵字篩選…" oninput="applyFilter()" style="min-width:180px">
-      <select id="filterSrc" onchange="applyFilter()">
-        <option value="">全部來源</option>
-        <option value="PCC決標">PCC決標</option>
-        <option value="公報網招標">公報網招標</option>
-      </select>
       <select id="filterKw" onchange="applyFilter()">
         <option value="">全部關鍵字</option>
       </select>
@@ -111,17 +153,84 @@ a.row-link:hover { text-decoration: underline; }
 
 </div>
 <script>
+const REPO    = 'mikematw0316-labbot/tender-scraper-web';
+const WORKFLOW = 'scrape.yml';
 const DATA_URL = 'data/results.json';
-const COLS = ['來源','機關名稱','標案名稱','案號','公告/決標日期','決標金額','搜尋關鍵字','詳細連結'];
+const COLS = ['機關名稱','決標日期','標案名稱','來源案號','投標廠商家數','得標廠商','決標金額','公報連結'];
 
-let allData = [];
-let filtered = [];
-let sortCol = -1, sortDir = 1;
+let allData = [], filtered = [], sortCol = -1, sortDir = 1;
 
 function rowArr(r) {
-  return [r.src, r.agency, r.tenderName, r.tenderId, r.pubDate, r.amount, r.keyword, r.detailLink];
+  return [r.機關名稱, r.決標日期, r.標案名稱, r.來源案號,
+          r.投標廠商家數, r.得標廠商, r.決標金額, r.公報URL];
 }
 
+// ── Token 管理 ──────────────────────────────────────────
+function saveToken() {
+  const t = document.getElementById('ghToken').value.trim();
+  if (t) localStorage.setItem('gh_token', t);
+  else localStorage.removeItem('gh_token');
+}
+function clearToken() {
+  localStorage.removeItem('gh_token');
+  document.getElementById('ghToken').value = '';
+  updateBtn();
+}
+function getToken() { return localStorage.getItem('gh_token') || ''; }
+function toggleSettings() {
+  const p = document.getElementById('settingsPanel');
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+}
+function updateBtn() {
+  const url = document.getElementById('startUrl').value.trim();
+  const tok = document.getElementById('ghToken').value.trim() || getToken();
+  document.getElementById('analyzeBtn').disabled = !(url && tok);
+}
+
+// ── 觸發 GitHub Actions ────────────────────────────────
+async function triggerScraper() {
+  const startUrl = document.getElementById('startUrl').value.trim();
+  const token = document.getElementById('ghToken').value.trim() || getToken();
+  if (!startUrl || !token) return;
+
+  const box = document.getElementById('triggerStatus');
+  box.className = 'status-box';
+  box.style.display = 'block';
+  box.textContent = '⏳ 正在觸發雲端爬蟲，請稍候…';
+  document.getElementById('analyzeBtn').disabled = true;
+
+  try {
+    const resp = await fetch(
+      `https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ref: 'main', inputs: { start_url: startUrl } }),
+      }
+    );
+    if (resp.status === 204) {
+      box.className = 'status-box success';
+      box.innerHTML = `✅ 已觸發成功！爬蟲正在雲端執行中（約 10～20 分鐘）。<br>
+        👉 <a href="https://github.com/${REPO}/actions" target="_blank" class="run-link">查看執行進度</a><br>
+        完成後點上方「🔄 重新整理」即可看到結果。`;
+      if (token) localStorage.setItem('gh_token', token);
+    } else {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body.message || `HTTP ${resp.status}`);
+    }
+  } catch(e) {
+    box.className = 'status-box error';
+    box.textContent = `❌ 觸發失敗：${e.message}。請確認 Token 是否有效且具備 workflow 權限。`;
+  } finally {
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+// ── 載入結果 ───────────────────────────────────────────
 async function loadData() {
   document.getElementById('spinner').style.display = 'inline-block';
   document.getElementById('statusMsg').textContent = '載入中…';
@@ -130,19 +239,16 @@ async function loadData() {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
 
-    // Update header info
-    const d = new Date(data.updatedAt);
+    const d = new Date(data.updatedAt || data.updated_at || Date.now());
     document.getElementById('updatedAt').textContent =
       d.toLocaleDateString('zh-TW') + ' ' + d.toLocaleTimeString('zh-TW');
+    document.getElementById('agencyName').textContent = data.agencyName || data.agency_name || '—';
     document.getElementById('keywords').textContent = (data.keywords || []).join('、');
-    document.getElementById('dateRange').textContent =
-      `${data.dateRange?.start || ''} ～ ${data.dateRange?.end || ''}`;
     document.getElementById('totalCount').textContent = `${data.total || 0} 筆`;
 
     allData = data.items || [];
-    // Populate keyword filter
     const kwSelect = document.getElementById('filterKw');
-    const kwSet = [...new Set(allData.map(i => i.keyword))].sort();
+    const kwSet = [...new Set(allData.map(i => i.搜尋關鍵字 || i.keyword || '').filter(Boolean))].sort();
     kwSelect.innerHTML = '<option value="">全部關鍵字</option>' +
       kwSet.map(k => `<option value="${k}">${k}</option>`).join('');
 
@@ -150,11 +256,10 @@ async function loadData() {
     document.getElementById('statusMsg').textContent = '';
     applyFilter();
   } catch(e) {
-    document.getElementById('statusMsg').textContent = `載入失敗：${e.message}`;
-    if (e.message.includes('404') || e.message.includes('Failed')) {
-      document.getElementById('statusMsg').textContent =
-        '尚無資料，請到 GitHub Actions 手動觸發爬蟲';
-    }
+    const msg = e.message.includes('404') || e.message.includes('Failed')
+      ? '尚無資料，請先觸發上方的爬蟲分析。'
+      : `載入失敗：${e.message}`;
+    document.getElementById('statusMsg').textContent = msg;
   } finally {
     document.getElementById('spinner').style.display = 'none';
   }
@@ -162,11 +267,9 @@ async function loadData() {
 
 function applyFilter() {
   const text = document.getElementById('filterText').value.toLowerCase();
-  const src  = document.getElementById('filterSrc').value;
   const kw   = document.getElementById('filterKw').value;
   filtered = allData.filter(item => {
-    if (src && item.src !== src) return false;
-    if (kw  && item.keyword !== kw) return false;
+    if (kw && (item.搜尋關鍵字 || item.keyword || '') !== kw) return false;
     if (text && !Object.values(item).some(v => (v||'').toLowerCase().includes(text))) return false;
     return true;
   });
@@ -181,7 +284,6 @@ function sortBy(colIdx) {
 }
 
 function renderTable() {
-  // Sort
   const sorted = [...filtered];
   if (sortCol >= 0) {
     sorted.sort((a,b) => {
@@ -190,7 +292,6 @@ function renderTable() {
       return av.localeCompare(bv, 'zh-TW') * sortDir;
     });
   }
-
   const c = document.getElementById('resultsTable');
   if (!sorted.length) {
     c.innerHTML = '<div class="empty-state">📭 沒有找到符合條件的標案</div>';
@@ -207,7 +308,6 @@ function renderTable() {
     }
     hr.appendChild(th);
   });
-
   const tb = t.createTBody();
   sorted.forEach(r => {
     const tr = tb.insertRow();
@@ -217,14 +317,9 @@ function renderTable() {
         const a = document.createElement('a');
         a.href = v; a.target = '_blank'; a.textContent = '查看'; a.className = 'row-link';
         td.appendChild(a);
-      } else if (i === 0) {
-        const span = document.createElement('span');
-        span.className = 'tag' + (v.includes('公報') ? ' tag-tb' : '');
-        span.textContent = v || '—';
-        td.appendChild(span);
       } else {
         td.textContent = v || '—';
-        if (i === 1 || i === 4) td.className = 'nowrap';
+        if (i === 0 || i === 1 || i === 3) td.className = 'nowrap';
       }
     });
   });
@@ -232,7 +327,6 @@ function renderTable() {
   c.appendChild(t);
 }
 
-// ── Export ──────────────────────────────────────────────
 function downloadCSV() {
   const data = filtered.length ? filtered : allData;
   if (!data.length) { alert('沒有資料可下載'); return; }
@@ -260,8 +354,13 @@ function copyForSheets() {
     });
 }
 
-// Auto-load on page open
-loadData();
+// 初始化
+(function init() {
+  const saved = getToken();
+  if (saved) document.getElementById('ghToken').value = saved;
+  updateBtn();
+  loadData();
+})();
 </script>
 </body>
 </html>
