@@ -90,9 +90,13 @@ a.row-link:hover { text-decoration: underline; }
         🚀 開始分析
       </button>
     </div>
+    <div class="form-row" style="margin-top:4px">
+      <input type="text" id="agencyNameInput" placeholder="機關名稱（選填：直接填入可跳過自動抓取，例如：基隆市政府）">
+    </div>
     <div class="hint">
       流程：自動取得機關名稱 → 查詢公報網案件 → 篩選關鍵字 → 彙整採購網決標資料<br>
-      完成後約需 <strong>10～20 分鐘</strong>，結果會自動更新在下方。
+      完成後約需 <strong>10～20 分鐘</strong>，結果會自動更新在下方。<br>
+      ⚠ 若採購網網址為新版 SPA 格式（readBulletionBoard），請填寫機關名稱以跳過 Stage 1。
     </div>
 
     <div class="status-box" id="triggerStatus"></div>
@@ -181,7 +185,10 @@ async function openActions() {
         },
         body: JSON.stringify({
           ref: 'main',
-          inputs: { start_url: startUrl },
+          inputs: {
+            start_url: startUrl,
+            agency_name: document.getElementById('agencyNameInput').value.trim(),
+          },
         }),
       }
     );

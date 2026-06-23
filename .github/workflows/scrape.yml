@@ -6,6 +6,10 @@ on:
       start_url:
         description: '政府採購網起始網址（必填）'
         required: true
+      agency_name:
+        description: '機關名稱（選填，填寫後跳過 Stage 1 自動抓取）'
+        required: false
+        default: ''
       keywords:
         description: '關鍵字（逗號分隔，留空用預設）'
         required: false
@@ -39,6 +43,7 @@ jobs:
       - name: Run scraper
         env:
           START_URL: ${{ github.event.inputs.start_url }}
+          AGENCY_NAME: ${{ github.event.inputs.agency_name }}
           KEYWORDS: ${{ github.event.inputs.keywords }}
           LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days }}
         run: python scraper/scraper.py

@@ -29,6 +29,7 @@ from playwright.async_api import async_playwright, TimeoutError as PlaywrightTim
 # 設定（從環境變數讀取）
 # ─────────────────────────────────────────
 START_URL = os.environ.get("START_URL", "").strip()
+AGENCY_NAME_ENV = os.environ.get("AGENCY_NAME", "").strip()
 KEYWORDS_ENV = os.environ.get("KEYWORDS", "設計,監造,耐震,補強,技術")
 TARGET_KEYWORDS = [k.strip() for k in KEYWORDS_ENV.split(",") if k.strip()]
 LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "180"))
@@ -714,7 +715,11 @@ async def main():
         page = await ctx.new_page()
 
         try:
-            agency_name = await stage1_get_agency(page, START_URL)
+            if AGENCY_NAME_ENV:
+                print(f"[Stage 1] 使用指定機關名稱：{AGENCY_NAME_ENV}")
+                agency_name = AGENCY_NAME_ENV
+            else:
+                agency_name = await stage1_get_agency(page, START_URL)
             year_url = await stage2_get_year_page(page, agency_name)
             matched_cases = await stage3_collect_cases(page, year_url)
 
