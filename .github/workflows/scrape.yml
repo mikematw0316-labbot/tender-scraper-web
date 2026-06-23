@@ -50,4 +50,5 @@ jobs:
           git add data/results.json
           git diff --staged --quiet && echo "No changes" || \
             git commit -m "chore: update tender data $(date +'%Y-%m-%d %H:%M') [$(echo '${{ github.event.inputs.start_url }}' | cut -c1-60)]"
+          git pull --rebase origin main
           git push

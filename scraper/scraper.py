@@ -199,12 +199,15 @@ async def stage3_collect_cases(page, year_url: str) -> list[dict]:
     print(f"\n[Stage 3] 掃描年度案件：{year_url}")
     await page.goto(year_url, wait_until="domcontentloaded", timeout=30000)
     try:
-        await page.wait_for_load_state("networkidle", timeout=10000)
+        await page.wait_for_load_state("networkidle", timeout=20000)
     except PlaywrightTimeoutError:
         pass
+    # Extra wait for JS-rendered content in headless mode
+    await page.wait_for_timeout(3000)
     await rand_sleep()
 
     content = await page.content()
+    print(f"[Stage 3] 頁面大小：{len(content)} bytes")
     rec_pattern = re.compile(r"ShowCCDetail\.ASP\?RecNo=(\d+)", re.IGNORECASE)
 
     candidates: list[tuple[str, str]] = []
@@ -218,11 +221,25 @@ async def stage3_collect_cases(page, year_url: str) -> list[dict]:
                 candidates.append((rec, strip_html(m.group(2)).strip()))
 
     if not candidates:
+        # Fallback: scan raw HTML for any RecNo pattern
         for rec_m in rec_pattern.finditer(content):
             rec = rec_m.group(1)
             if rec not in seen:
                 seen.add(rec)
                 candidates.append((rec, ""))
+
+    # Fallback 2: use Playwright locator to find links with openWin
+    if not candidates:
+        print("[Stage 3] regex 掃描無結果，嘗試 Playwright locator…")
+        for lk in await page.locator("a").all():
+            href = await lk.get_attribute("href") or ""
+            rec_m = rec_pattern.search(href)
+            if rec_m:
+                rec = rec_m.group(1)
+                if rec not in seen:
+                    seen.add(rec)
+                    txt = (await lk.inner_text()).strip()
+                    candidates.append((rec, txt))
 
     print(f"[Stage 3] 找到 {len(candidates)} 筆，篩選中…")
     matched: list[dict] = []
