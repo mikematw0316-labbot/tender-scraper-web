@@ -420,10 +420,13 @@ async def stage45_query_pcc(page, case: dict) -> dict | None:
     await rand_sleep()
 
     atm_html = await page.evaluate(
-        "() => { const el = document.getElementById('atm'); return el ? el.outerHTML : document.body.innerHTML; }"
+        "() => { const el = document.getElementById('atm'); return el ? el.outerHTML : ''; }"
     )
 
+    print(f"  [4-debug] tender_id={tender_id} atm_size={len(atm_html)} snippet={atm_html[:300]!r}")
+
     if not atm_html or "無符合" in atm_html or "查無資料" in atm_html:
+        print(f"  [4] 查無資料 ({tender_id})")
         return None
 
     # 找匹配案號的列
@@ -436,8 +439,11 @@ async def stage45_query_pcc(page, case: dict) -> dict | None:
                 break
 
     if not chosen_link:
-        all_lks = re.findall(r"href=['\"]?(/prkms/[^'\">\s]+)['\"]?", atm_html, re.IGNORECASE)
+        # Only take result links (not navigation links like gpaPredict)
+        all_lks = re.findall(r"href=['\"]?(/prkms/tender/[^'\">\s]+)['\"]?", atm_html, re.IGNORECASE)
         chosen_link = all_lks[0] if all_lks else None
+        if not all_lks:
+            print(f"  [4] 找不到決標連結 ({tender_id})")
 
     if not chosen_link:
         return None
