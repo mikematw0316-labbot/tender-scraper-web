@@ -143,70 +143,72 @@ async def stage1_get_agency(page, start_url: str) -> str:
 
 async def _stage1_search_pcc_by_case(page, case_no: str) -> str:
     """Search PCC indexTenderAgent with case number to find agency name."""
-    # Try with last 180 days and next 6 days (stay within 186-day limit)
-    today = datetime.utcnow().date()
-    end_date = today + timedelta(days=6)
-    start_date = today - timedelta(days=180)
-    roc_start = f"{start_date.year - 1911}/{start_date.month:02d}/{start_date.day:02d}"
-    roc_end   = f"{end_date.year - 1911}/{end_date.month:02d}/{end_date.day:02d}"
-    print(f"[Stage 1-PCC] 搜尋 {case_no} 日期 {roc_start}～{roc_end}")
+    # Extract ROC year from case number (e.g., KLC1140073 → 114)
+    year_m = re.search(r"[A-Za-z](\d{3})\d{3,}", case_no)
+    roc_year = int(year_m.group(1)) if year_m else (datetime.utcnow().year - 1911)
+    # Search in two half-year windows to cover the full year (each ≤ 186 days)
+    date_windows = [
+        (f"{roc_year}/01/01", f"{roc_year}/07/04"),
+        (f"{roc_year}/07/05", f"{roc_year}/12/31"),
+        (f"{roc_year+1}/01/01", f"{roc_year+1}/06/30"),
+    ]
+    print(f"[Stage 1-PCC] 從案號 {case_no} 取ROC年{roc_year}，分段搜尋")
 
-    await page.goto(PCC_SEARCH_URL, wait_until="domcontentloaded", timeout=30000)
-    try:
-        await page.wait_for_load_state("networkidle", timeout=12000)
-    except PlaywrightTimeoutError:
-        pass
-    await rand_sleep()
+    for roc_start, roc_end in date_windows:
+        print(f"[Stage 1-PCC] 搜尋 {roc_start}～{roc_end}")
+        await page.goto(PCC_SEARCH_URL, wait_until="domcontentloaded", timeout=30000)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=12000)
+        except PlaywrightTimeoutError:
+            pass
+        await rand_sleep()
 
-    await page.evaluate(
-        """([tenderId, startDate, endDate]) => {
-            if (typeof $ !== 'undefined') {
-                $("input[name='tenderId']").val(tenderId);
-                $("input[name='awardAnnounceStartDate']").val(startDate);
-                $("input[name='awardAnnounceEndDate']").val(endDate);
-            } else {
-                document.querySelector("input[name='tenderId']").value = tenderId;
-                document.querySelector("input[name='awardAnnounceStartDate']").value = startDate;
-                document.querySelector("input[name='awardAnnounceEndDate']").value = endDate;
-            }
-        }""",
-        [case_no, roc_start, roc_end],
-    )
-    await rand_sleep(0.5, 1.0)
-    try:
-        await page.evaluate("agentTenderSearch()")
-    except Exception:
-        pass
-    try:
-        await page.wait_for_load_state("networkidle", timeout=20000)
-    except PlaywrightTimeoutError:
-        pass
-    await rand_sleep()
+        await page.evaluate(
+            """([tenderId, startDate, endDate]) => {
+                if (typeof $ !== 'undefined') {
+                    $("input[name='tenderId']").val(tenderId);
+                    $("input[name='awardAnnounceStartDate']").val(startDate);
+                    $("input[name='awardAnnounceEndDate']").val(endDate);
+                } else {
+                    document.querySelector("input[name='tenderId']").value = tenderId;
+                    document.querySelector("input[name='awardAnnounceStartDate']").value = startDate;
+                    document.querySelector("input[name='awardAnnounceEndDate']").value = endDate;
+                }
+            }""",
+            [case_no, roc_start, roc_end],
+        )
+        await rand_sleep(0.5, 1.0)
+        try:
+            await page.evaluate("agentTenderSearch()")
+        except Exception:
+            pass
+        try:
+            await page.wait_for_load_state("networkidle", timeout=20000)
+        except PlaywrightTimeoutError:
+            pass
+        await rand_sleep()
 
-    current_url = page.url
-    print(f"[Stage 1-PCC] 搜尋後URL: {current_url}")
+        atm_html = await page.evaluate(
+            "() => { const el = document.getElementById('atm'); return el ? el.outerHTML : ''; }"
+        )
+        print(f"[Stage 1-PCC] atm_size={len(atm_html)}")
+        if not atm_html or "無符合" in atm_html or "查無資料" in atm_html:
+            continue
 
-    atm_html = await page.evaluate(
-        "() => { const el = document.getElementById('atm'); return el ? el.outerHTML : ''; }"
-    )
-    print(f"[Stage 1-PCC] atm_size={len(atm_html)}")
-    if not atm_html or "無符合" in atm_html or "查無資料" in atm_html:
-        return ""
-
-    # Find agency name in results table
-    for row in re.findall(r"<tr[^>]*>(.*?)</tr>", atm_html, re.IGNORECASE | re.DOTALL):
-        cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.IGNORECASE | re.DOTALL)
-        texts = [strip_html(c).strip() for c in cells]
-        for i, t in enumerate(texts):
-            if case_no in t and i + 1 < len(texts):
-                candidate = texts[i + 1]
-                if len(candidate) > 2:
-                    return candidate
-        plain = strip_html(row)
-        if case_no in plain:
-            m = re.search(r"([\u4e00-\u9fff]{3,20}(?:政府|市|縣|局|處|署|院|委|部|廳)[\u4e00-\u9fff]{0,10})", plain)
-            if m:
-                return m.group(1)
+        # Find agency name in results table
+        for row in re.findall(r"<tr[^>]*>(.*?)</tr>", atm_html, re.IGNORECASE | re.DOTALL):
+            cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.IGNORECASE | re.DOTALL)
+            texts = [strip_html(c).strip() for c in cells]
+            for i, t in enumerate(texts):
+                if case_no in t and i + 1 < len(texts):
+                    candidate = texts[i + 1]
+                    if len(candidate) > 2:
+                        return candidate
+            plain = strip_html(row)
+            if case_no in plain:
+                m = re.search(r"([\u4e00-\u9fff]{3,20}(?:政府|市|縣|局|處|署|院|委|部|廳)[\u4e00-\u9fff]{0,10})", plain)
+                if m:
+                    return m.group(1)
 
     return ""
 
