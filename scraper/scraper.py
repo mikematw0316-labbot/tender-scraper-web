@@ -197,6 +197,9 @@ async def stage2_get_year_page(page, agency_name: str) -> str:
 # ─────────────────────────────────────────
 async def stage3_collect_cases(page, year_url: str) -> list[dict]:
     print(f"\n[Stage 3] 掃描年度案件：{year_url}")
+    # Visit homepage first to establish session cookies
+    await page.goto(TB_BASE, wait_until="domcontentloaded", timeout=20000)
+    await page.wait_for_timeout(1500)
     await page.goto(year_url, wait_until="domcontentloaded", timeout=30000)
     try:
         await page.wait_for_load_state("networkidle", timeout=20000)
@@ -208,6 +211,8 @@ async def stage3_collect_cases(page, year_url: str) -> list[dict]:
 
     content = await page.content()
     print(f"[Stage 3] 頁面大小：{len(content)} bytes")
+    if len(content) < 2000:
+        print(f"[Stage 3] 頁面內容（debug）：{content[:800]}")
     rec_pattern = re.compile(r"ShowCCDetail\.ASP\?RecNo=(\d+)", re.IGNORECASE)
 
     candidates: list[tuple[str, str]] = []
@@ -462,7 +467,16 @@ async def main():
                 "Chrome/136.0.0.0 Safari/537.36"
             ),
             viewport={"width": 1280, "height": 900},
+            locale="zh-TW",
+            timezone_id="Asia/Taipei",
         )
+        # Hide headless browser fingerprints
+        await ctx.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3,4,5]});
+            Object.defineProperty(navigator, 'languages', {get: () => ['zh-TW','zh','en']});
+            window.chrome = {runtime: {}};
+        """)
         page = await ctx.new_page()
 
         try:
