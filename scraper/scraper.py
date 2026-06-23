@@ -50,6 +50,12 @@ def gregorian_shift(date_str: str, days: int) -> str:
     return (dt + timedelta(days=days)).strftime("%Y/%m/%d")
 
 
+def gregorian_to_roc(date_str: str) -> str:
+    """Convert Gregorian YYYY/MM/DD to ROC YYY/MM/DD for PCC date fields."""
+    dt = datetime.strptime(date_str, "%Y/%m/%d")
+    return f"{dt.year - 1911}/{dt.month:02d}/{dt.day:02d}"
+
+
 def contains_keyword(text: str) -> bool:
     return any(kw in text for kw in TARGET_KEYWORDS)
 
@@ -370,9 +376,11 @@ async def stage45_query_pcc(page, case: dict) -> dict | None:
     if not pub_date:
         return None
 
-    start_date = gregorian_shift(pub_date, -LOOKBACK_DAYS)
-    end_date = gregorian_shift(pub_date, LOOKBACK_DAYS)
-    print(f"  [4] {tender_id}  {start_date}～{end_date}")
+    # PCC date fields use ROC format; max range 185 days (limit is 186)
+    max_days = min(LOOKBACK_DAYS, 92)
+    start_date_roc = gregorian_to_roc(gregorian_shift(pub_date, -max_days))
+    end_date_roc   = gregorian_to_roc(gregorian_shift(pub_date,  max_days))
+    print(f"  [4] {tender_id}  {start_date_roc}～{end_date_roc}")
 
     await page.goto(PCC_SEARCH_URL, wait_until="domcontentloaded", timeout=30000)
     try:
@@ -381,37 +389,28 @@ async def stage45_query_pcc(page, case: dict) -> dict | None:
         pass
     await rand_sleep()
 
+    # Use jQuery .val() — agentTenderSearch() reads fields via jQuery
     await page.evaluate(
         """([tenderId, startDate, endDate]) => {
-            const all = [...document.querySelectorAll('input')];
-            const caseEl = all.find(el => {
-                const n = (el.name || el.id || '').toLowerCase();
-                return n.includes('caseno') || n.includes('tenderid') || n.includes('pkatm');
-            });
-            if (caseEl) { caseEl.removeAttribute('readonly'); caseEl.value = tenderId; }
-            const startEl = all.find(el => {
-                const n = (el.name || el.id || '').toLowerCase();
-                return (n.includes('start') || n.includes('begin') || n.includes('from')) && n.includes('date');
-            });
-            if (startEl) { startEl.removeAttribute('readonly'); startEl.value = startDate; }
-            const endEl = all.find(el => {
-                const n = (el.name || el.id || '').toLowerCase();
-                return (n.includes('end') || n.includes('to')) && n.includes('date');
-            });
-            if (endEl) { endEl.removeAttribute('readonly'); endEl.value = endDate; }
+            if (typeof $ !== 'undefined') {
+                $("input[name='tenderId']").val(tenderId);
+                $("input[name='awardAnnounceStartDate']").val(startDate);
+                $("input[name='awardAnnounceEndDate']").val(endDate);
+            } else {
+                document.querySelector("input[name='tenderId']").value = tenderId;
+                document.querySelector("input[name='awardAnnounceStartDate']").value = startDate;
+                document.querySelector("input[name='awardAnnounceEndDate']").value = endDate;
+            }
         }""",
-        [tender_id, start_date, end_date],
+        [tender_id, start_date_roc, end_date_roc],
     )
     await rand_sleep(0.5, 1.0)
 
+    # agentTenderSearch does window.location = form.action + '?' + form.serialize()
     try:
         await page.evaluate("agentTenderSearch()")
     except Exception:
-        try:
-            await page.locator("input[type='submit'][value*='查詢'], button:has-text('查詢')").first.click()
-        except Exception as e2:
-            print(f"  ⚠ 無法提交：{e2}")
-            return None
+        pass  # navigation triggers exception - that's expected
 
     try:
         await page.wait_for_load_state("networkidle", timeout=20000)
@@ -419,33 +418,37 @@ async def stage45_query_pcc(page, case: dict) -> dict | None:
         pass
     await rand_sleep()
 
+    current_url = page.url
+    print(f"  [4] 搜尋後 URL={current_url}")
+
+    # If redirected to bulletin (date range too wide or not logged in)
+    if "indexBulletion" in current_url:
+        print(f"  [4] 超出查詢範圍，跳過 ({tender_id})")
+        return None
+
     atm_html = await page.evaluate(
         "() => { const el = document.getElementById('atm'); return el ? el.outerHTML : ''; }"
     )
-
-    print(f"  [4-debug] tender_id={tender_id} atm_size={len(atm_html)} snippet={atm_html[:300]!r}")
+    print(f"  [4] atm_size={len(atm_html)}")
 
     if not atm_html or "無符合" in atm_html or "查無資料" in atm_html:
-        print(f"  [4] 查無資料 ({tender_id})")
         return None
 
-    # 找匹配案號的列
+    # 找匹配案號的列，或第一個決標連結
     chosen_link = None
     for row in re.findall(r"<tr[^>]*>(.*?)</tr>", atm_html, re.IGNORECASE | re.DOTALL):
         if tender_id in row:
-            lks = re.findall(r"href=['\"]?(/prkms/[^'\">\s]+)['\"]?", row, re.IGNORECASE)
+            lks = re.findall(r"href=['\"]?(/prkms/tender/[^'\">\s]+)['\"]?", row, re.IGNORECASE)
             if lks:
                 chosen_link = lks[0]
                 break
 
     if not chosen_link:
-        # Only take result links (not navigation links like gpaPredict)
         all_lks = re.findall(r"href=['\"]?(/prkms/tender/[^'\">\s]+)['\"]?", atm_html, re.IGNORECASE)
         chosen_link = all_lks[0] if all_lks else None
-        if not all_lks:
-            print(f"  [4] 找不到決標連結 ({tender_id})")
 
     if not chosen_link:
+        print(f"  [4] 找不到決標連結 ({tender_id})")
         return None
 
     detail_url = f"https://web.pcc.gov.tw{chosen_link}"
