@@ -167,13 +167,20 @@ async def stage2_get_year_page(page, agency_name: str) -> str:
 
     content = await page.content()
     year_map: dict[int, str] = {}
+
+    def clean_href(h: str) -> str:
+        """Decode HTML entities and build absolute URL."""
+        h = h.replace("&amp;", "&").replace("&#38;", "&")
+        return h if h.startswith("http") else f"{TB_BASE}/{h.lstrip('/')}"
+
     for href in re.findall(
         r"href=['\"]?([^'\">\s]*ShowOrgYearClose[^'\">\s]*)['\"]?", content, re.IGNORECASE
     ):
+        href = href.replace("&amp;", "&").replace("&#38;", "&")
         m = re.search(r"Y=(\d{4})", href, re.IGNORECASE)
         if m:
             y = int(m.group(1))
-            year_map[y] = href if href.startswith("http") else f"{TB_BASE}/{href.lstrip('/')}"
+            year_map[y] = clean_href(href)
 
     if not year_map:
         for lk in await page.locator("a").all():
@@ -181,7 +188,7 @@ async def stage2_get_year_page(page, agency_name: str) -> str:
             href = await lk.get_attribute("href") or ""
             if re.fullmatch(r"\d{4}", txt):
                 y = int(txt)
-                year_map[y] = href if href.startswith("http") else f"{TB_BASE}/{href.lstrip('/')}"
+                year_map[y] = clean_href(href)
 
     if not year_map:
         raise RuntimeError("找不到年份連結")
