@@ -86,57 +86,74 @@ def parse_date_to_gregorian(date_raw: str) -> str:
 async def stage1_get_agency(page, start_url: str) -> str:
     print(f"[Stage 1] 訪問：{start_url}")
 
-    # Strategy 1: Extract tenderCaseNo from URL and search PCC indexTenderAgent
+    # List of URLs to try (start with provided URL, add TPS alternatives)
+    urls_to_try = [start_url]
+
+    # If new-format PRKMS URL, also build TPS search URL from tenderCaseNo
     case_no_m = re.search(r"tenderCaseNo=([^&\s]+)", start_url, re.IGNORECASE)
     if case_no_m:
         case_no = case_no_m.group(1)
-        print(f"[Stage 1] 從URL取得案號：{case_no}，搜尋採購網…")
-        agency = await _stage1_search_pcc_by_case(page, case_no)
-        if agency:
-            print(f"[Stage 1] 機關名稱(PCC搜尋)：{agency}")
-            return agency
-
-    # Strategy 2: Load the bulletin board page and try DOM/regex extraction
-    await page.goto(start_url, wait_until="domcontentloaded", timeout=30000)
-    try:
-        await page.wait_for_load_state("networkidle", timeout=15000)
-    except PlaywrightTimeoutError:
-        pass
-    try:
-        await page.wait_for_function(
-            "() => document.body.innerText.includes('機關名稱')",
-            timeout=15000,
+        # Old TPS tender search (server-side rendered static HTML)
+        urls_to_try.append(
+            f"https://web.pcc.gov.tw/tps/main/pcc/tps/atm/atmTenderList.do"
+            f"?method=search&tenderCaseNo={case_no}&awardFlag=true"
         )
-    except PlaywrightTimeoutError:
-        pass
+        # Also try old QueryTender search
+        urls_to_try.append(
+            f"https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail"
+            f"?tenderCaseNo={case_no}"
+        )
+    else:
+        case_no = None
 
-    for sel in [
-        "th:has-text('機關名稱') + td",
-        "td:has-text('機關名稱') + td",
-        "tr:has(th:has-text('機關名稱')) td",
-    ]:
+    for try_url in urls_to_try:
+        print(f"[Stage 1] 嘗試URL：{try_url[:120]}")
+        await page.goto(try_url, wait_until="domcontentloaded", timeout=30000)
         try:
-            loc = page.locator(sel).first
-            if await loc.count() > 0:
-                text = (await loc.inner_text()).strip()
-                if text and len(text) > 1:
-                    print(f"[Stage 1] 機關名稱(DOM)：{text}")
-                    return text
-        except Exception:
+            await page.wait_for_load_state("networkidle", timeout=12000)
+        except PlaywrightTimeoutError:
             pass
+        try:
+            await page.wait_for_function(
+                "() => document.body.innerText.includes('機關名稱')",
+                timeout=10000,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        await rand_sleep(0.5, 1.0)
 
-    content = await page.content()
-    for pat in [
-        r"機關名稱[：:]\s*</[^>]+>\s*<[^>]+>\s*([^<\s]{2,30})",
-        r"機關名稱[：:\s]*([^\s<&\n]{2,30})",
-        r"機關名稱[\s\S]{0,100}?>\s*([^\s<]{2,30})\s*</",
-    ]:
-        m = re.search(pat, content)
-        if m:
-            agency = strip_html(m.group(1)).strip()
-            if agency and len(agency) > 1:
-                print(f"[Stage 1] 機關名稱(regex)：{agency}")
-                return agency
+        for sel in [
+            "th:has-text('機關名稱') + td",
+            "td:has-text('機關名稱') + td",
+            "tr:has(th:has-text('機關名稱')) td",
+            "tr:has(td:has-text('機關名稱')) td:nth-child(2)",
+        ]:
+            try:
+                loc = page.locator(sel).first
+                if await loc.count() > 0:
+                    text = (await loc.inner_text()).strip()
+                    if text and len(text) > 1:
+                        print(f"[Stage 1] 機關名稱(DOM/{try_url[:40]})：{text}")
+                        return text
+            except Exception:
+                pass
+
+        content = await page.content()
+        for pat in [
+            r"機關名稱[：:]\s*</[^>]+>\s*<[^>]+>\s*([^<\s]{2,30})",
+            r"機關名稱[：:\s]*([^\s<&\n]{2,30})",
+            r"機關名稱[\s\S]{0,100}?>\s*([^\s<]{2,30})\s*</",
+        ]:
+            m = re.search(pat, content)
+            if m:
+                agency = strip_html(m.group(1)).strip()
+                if agency and len(agency) > 1:
+                    print(f"[Stage 1] 機關名稱(regex)：{agency}")
+                    return agency
+
+        plain = re.sub(r'<[^>]+>', ' ', content)
+        plain = re.sub(r'\s+', ' ', plain).strip()
+        print(f"[Stage 1] {try_url[:60]} 純文字片段：{plain[:300]}")
 
     raise RuntimeError("無法取得機關名稱，請確認 START_URL 指向含機關資訊的採購頁面")
 
