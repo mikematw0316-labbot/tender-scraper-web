@@ -254,14 +254,27 @@ async def stage3_collect_cases(page, year_url: str) -> list[dict]:
                     candidates.append((rec, txt))
 
     print(f"[Stage 3] 找到 {len(candidates)} 筆，篩選中…")
+
+    # Pre-filter by link text on the year list page (fast, avoids 300+ detail fetches)
+    kw_candidates = [(rec, txt) for rec, txt in candidates if contains_keyword(txt)]
+    print(f"[Stage 3] 年度頁關鍵字預篩選：{len(kw_candidates)} 筆 (前5: {[t[:30] for _,t in kw_candidates[:5]]})")
+
+    # If pre-filter found nothing (link text may not contain names), fall back to all
+    if not kw_candidates:
+        kw_candidates = candidates
+        print("[Stage 3] 預篩選無結果，改為全量掃描詳情頁…")
+
     matched: list[dict] = []
-    for i, (rec_no, _) in enumerate(candidates):
+    for i, (rec_no, link_text) in enumerate(kw_candidates):
         detail_url = f"{TB_BASE}/ShowCCDetail.ASP?RecNo={rec_no}"
         try:
             detail = await _fetch_case_detail(page, detail_url)
-            if detail and contains_keyword(detail["tender_name"]):
-                matched.append(detail)
-                print(f"  [{i+1}] ✓ {detail['tender_name'][:50]}")
+            if detail:
+                name = detail.get("tender_name", "") or link_text
+                detail["tender_name"] = name
+                if contains_keyword(name):
+                    matched.append(detail)
+                    print(f"  [{i+1}] ✓ {name[:50]}")
         except Exception as e:
             print(f"  [{i+1}] ⚠ RecNo={rec_no}：{e}")
         await rand_sleep(0.4, 1.0)
