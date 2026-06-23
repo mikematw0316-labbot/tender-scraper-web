@@ -154,45 +154,37 @@ async def _stage1_search_pcc_by_case(page, case_no: str) -> str:
     ]
     print(f"[Stage 1-PCC] 從案號 {case_no} 取ROC年{roc_year}，分段搜尋")
 
-    for roc_start, roc_end in date_windows:
-        print(f"[Stage 1-PCC] 搜尋 {roc_start}～{roc_end}")
-        await page.goto(PCC_SEARCH_URL, wait_until="domcontentloaded", timeout=30000)
-        try:
-            await page.wait_for_load_state("networkidle", timeout=12000)
-        except PlaywrightTimeoutError:
-            pass
-        await rand_sleep()
+    PCC_RESULT_URL = "https://web.pcc.gov.tw/prkms/tender/common/agent/readTenderAgent"
 
-        await page.evaluate(
-            """([tenderId, startDate, endDate]) => {
-                if (typeof $ !== 'undefined') {
-                    $("input[name='tenderId']").val(tenderId);
-                    $("input[name='awardAnnounceStartDate']").val(startDate);
-                    $("input[name='awardAnnounceEndDate']").val(endDate);
-                } else {
-                    document.querySelector("input[name='tenderId']").value = tenderId;
-                    document.querySelector("input[name='awardAnnounceStartDate']").value = startDate;
-                    document.querySelector("input[name='awardAnnounceEndDate']").value = endDate;
-                }
-            }""",
-            [case_no, roc_start, roc_end],
+    for roc_start, roc_end in date_windows:
+        # Encode dates: "/" → "%2F"
+        s = roc_start.replace("/", "%2F")
+        e = roc_end.replace("/", "%2F")
+        url = (
+            f"{PCC_RESULT_URL}?pageSize=&firstSearch=false&isQuery=&isBinding=N&isLogIn=N"
+            f"&orgName=&orgId=&tenderName=&tenderId={case_no}"
+            f"&tenderStatus=TENDER_STATUS_1&tenderWay=TENDER_WAY_ALL_DECLARATION"
+            f"&awardAnnounceStartDate={s}&awardAnnounceEndDate={e}"
+            f"&radProctrgCate=&tenderRange=TENDER_RANGE_ALL&minBudget=&maxBudget="
+            f"&item=&gottenVendorName=&gottenVendorId=&submitVendorName=&submitVendorId="
+            f"&execLocation=&priorityCate=&radReConstruct=&policyAdvocacy=&isCpp="
         )
-        await rand_sleep(0.5, 1.0)
+        print(f"[Stage 1-PCC] GET {url[:120]}")
+        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
         try:
-            await page.evaluate("agentTenderSearch()")
-        except Exception:
-            pass
-        try:
-            await page.wait_for_load_state("networkidle", timeout=20000)
+            await page.wait_for_load_state("networkidle", timeout=15000)
         except PlaywrightTimeoutError:
             pass
-        await rand_sleep()
+        await rand_sleep(1.0, 2.0)
+        print(f"[Stage 1-PCC] 當前URL: {page.url[:120]}")
 
         atm_html = await page.evaluate(
             "() => { const el = document.getElementById('atm'); return el ? el.outerHTML : ''; }"
         )
         print(f"[Stage 1-PCC] atm_size={len(atm_html)}")
         if not atm_html or "無符合" in atm_html or "查無資料" in atm_html:
+            if atm_html:
+                print(f"[Stage 1-PCC] atm snippet: {atm_html[:300]}")
             continue
 
         # Find agency name in results table
@@ -209,6 +201,7 @@ async def _stage1_search_pcc_by_case(page, case_no: str) -> str:
                 m = re.search(r"([\u4e00-\u9fff]{3,20}(?:政府|市|縣|局|處|署|院|委|部|廳)[\u4e00-\u9fff]{0,10})", plain)
                 if m:
                     return m.group(1)
+        print(f"[Stage 1-PCC] atm found but no agency: {atm_html[:500]}")
 
     return ""
 
