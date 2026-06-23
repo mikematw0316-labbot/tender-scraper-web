@@ -157,7 +157,8 @@ let apiUrl = null;
 async function getApiUrl() {
   if (apiUrl) return apiUrl;
   try {
-    const r = await fetch('data/api_url.json?t=' + Date.now());
+    // Use raw.githubusercontent.com — updates instantly after push, no GitHub Pages cache delay
+    const r = await fetch('https://raw.githubusercontent.com/mikematw0316-labbot/tender-scraper-web/main/data/api_url.json?t=' + Date.now());
     const d = await r.json();
     apiUrl = d.api_url;
     return apiUrl;
