@@ -86,30 +86,13 @@ a.row-link:hover { text-decoration: underline; }
     <div class="form-row">
       <input type="text" id="startUrl" placeholder="貼上政府電子採購網網址，例如：https://web.pcc.gov.tw/prkms/tender/..."
              oninput="updateBtn()">
-      <button class="btn btn-primary" id="analyzeBtn" onclick="triggerScraper()" disabled>
+      <button class="btn btn-primary" id="analyzeBtn" onclick="openActions()" disabled>
         🚀 開始分析
       </button>
     </div>
     <div class="hint">
       流程：自動取得機關名稱 → 查詢公報網案件 → 篩選關鍵字 → 彙整採購網決標資料<br>
-      完成後約需 <strong>10～20 分鐘</strong>（GitHub Actions 雲端執行），結果會自動更新在下方。
-    </div>
-
-    <!-- 設定（GitHub Token） -->
-    <div style="margin-top:10px">
-      <span class="settings-toggle" onclick="toggleSettings()">⚙️ 設定 GitHub Token</span>
-      <div class="settings-panel" id="settingsPanel">
-        <label>GitHub Personal Access Token（需有 workflow 權限）</label>
-        <div class="form-row" style="margin-bottom:6px">
-          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxx"
-                 oninput="saveToken(); updateBtn()">
-          <button class="btn btn-gray" onclick="clearToken()">清除</button>
-        </div>
-        <div class="hint">
-          Token 只存在你的瀏覽器，不會傳送到任何伺服器。<br>
-          申請方式：<a href="https://github.com/settings/tokens/new?scopes=workflow" target="_blank">GitHub → Settings → Developer settings → Personal access tokens</a>，勾選 <strong>workflow</strong> 權限。
-        </div>
-      </div>
+      完成後約需 <strong>10～20 分鐘</strong>，結果會自動更新在下方。
     </div>
 
     <div class="status-box" id="triggerStatus"></div>
@@ -153,8 +136,7 @@ a.row-link:hover { text-decoration: underline; }
 
 </div>
 <script>
-const REPO    = 'mikematw0316-labbot/tender-scraper-web';
-const WORKFLOW = 'scrape.yml';
+const ACTIONS_URL = 'https://github.com/mikematw0316-labbot/tender-scraper-web/actions/workflows/scrape.yml';
 const DATA_URL = 'data/results.json';
 const COLS = ['機關名稱','決標日期','標案名稱','來源案號','投標廠商家數','得標廠商','決標金額','公報連結'];
 
@@ -165,69 +147,38 @@ function rowArr(r) {
           r.投標廠商家數, r.得標廠商, r.決標金額, r.公報URL];
 }
 
-// ── Token 管理 ──────────────────────────────────────────
-function saveToken() {
-  const t = document.getElementById('ghToken').value.trim();
-  if (t) localStorage.setItem('gh_token', t);
-  else localStorage.removeItem('gh_token');
-}
-function clearToken() {
-  localStorage.removeItem('gh_token');
-  document.getElementById('ghToken').value = '';
-  updateBtn();
-}
-function getToken() { return localStorage.getItem('gh_token') || ''; }
-function toggleSettings() {
-  const p = document.getElementById('settingsPanel');
-  p.style.display = p.style.display === 'block' ? 'none' : 'block';
-}
 function updateBtn() {
   const url = document.getElementById('startUrl').value.trim();
-  const tok = document.getElementById('ghToken').value.trim() || getToken();
-  document.getElementById('analyzeBtn').disabled = !(url && tok);
+  document.getElementById('analyzeBtn').disabled = !url;
 }
 
-// ── 觸發 GitHub Actions ────────────────────────────────
-async function triggerScraper() {
+// ── 觸發：複製網址並開啟 GitHub Actions 頁面 ────────────
+function openActions() {
   const startUrl = document.getElementById('startUrl').value.trim();
-  const token = document.getElementById('ghToken').value.trim() || getToken();
-  if (!startUrl || !token) return;
+  if (!startUrl) return;
 
+  // 複製網址到剪貼簿
+  navigator.clipboard.writeText(startUrl).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = startUrl; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+  });
+
+  // 顯示說明
   const box = document.getElementById('triggerStatus');
-  box.className = 'status-box';
+  box.className = 'status-box success';
   box.style.display = 'block';
-  box.textContent = '⏳ 正在觸發雲端爬蟲，請稍候…';
-  document.getElementById('analyzeBtn').disabled = true;
+  box.innerHTML = `
+    ✅ 網址已複製到剪貼簿！<br><br>
+    <strong>接下來 3 步驟：</strong><br>
+    1️⃣ 在打開的 GitHub 頁面，點右側 <strong>「Run workflow」</strong> 按鈕<br>
+    2️⃣ 在「政府採購網起始網址」欄位，按 <strong>Ctrl+V（或 ⌘V）貼上</strong><br>
+    3️⃣ 點綠色 <strong>「Run workflow」</strong> 確認執行<br><br>
+    約 10～20 分鐘後，回本頁點「🔄 重新整理」看結果。
+  `;
 
-  try {
-    const resp = await fetch(
-      `https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `token ${token}`,
-          'Accept': 'application/vnd.github+json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ref: 'main', inputs: { start_url: startUrl } }),
-      }
-    );
-    if (resp.status === 204) {
-      box.className = 'status-box success';
-      box.innerHTML = `✅ 已觸發成功！爬蟲正在雲端執行中（約 10～20 分鐘）。<br>
-        👉 <a href="https://github.com/${REPO}/actions" target="_blank" class="run-link">查看執行進度</a><br>
-        完成後點上方「🔄 重新整理」即可看到結果。`;
-      if (token) localStorage.setItem('gh_token', token);
-    } else {
-      const body = await resp.json().catch(() => ({}));
-      throw new Error(body.message || `HTTP ${resp.status}`);
-    }
-  } catch(e) {
-    box.className = 'status-box error';
-    box.textContent = `❌ 觸發失敗：${e.message}。請確認 Token 是否有效且具備 workflow 權限。`;
-  } finally {
-    document.getElementById('analyzeBtn').disabled = false;
-  }
+  // 開啟 GitHub Actions 頁面
+  window.open(ACTIONS_URL, '_blank');
 }
 
 // ── 載入結果 ───────────────────────────────────────────
@@ -356,8 +307,6 @@ function copyForSheets() {
 
 // 初始化
 (function init() {
-  const saved = getToken();
-  if (saved) document.getElementById('ghToken').value = saved;
   updateBtn();
   loadData();
 })();
