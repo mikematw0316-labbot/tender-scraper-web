@@ -293,7 +293,10 @@ async def stage3_collect_cases(page, year_url: str) -> list[dict]:
     return matched
 
 
+_detail_debug_count = 0
+
 async def _fetch_case_detail(page, detail_url: str) -> dict | None:
+    global _detail_debug_count
     await page.goto(detail_url, wait_until="domcontentloaded", timeout=20000)
     try:
         await page.wait_for_load_state("networkidle", timeout=8000)
@@ -303,6 +306,11 @@ async def _fetch_case_detail(page, detail_url: str) -> dict | None:
     if len(content) < 500:
         print(f"    [detail] 詳情頁太小({len(content)}b)：{content[:300]}")
         return None
+    # Print first detail page content for debugging
+    if _detail_debug_count < 1:
+        _detail_debug_count += 1
+        print(f"    [detail-debug] URL={detail_url} size={len(content)}")
+        print(f"    [detail-debug] content={content[:800]}")
 
     def find(labels):
         for label in labels:
