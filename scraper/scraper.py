@@ -84,76 +84,106 @@ def parse_date_to_gregorian(date_raw: str) -> str:
 # Stage 1：從採購網頁面取得機關名稱
 # ─────────────────────────────────────────
 async def stage1_get_agency(page, start_url: str) -> str:
+    import urllib.request as _urllib
+
     print(f"[Stage 1] 訪問：{start_url}")
 
-    # List of URLs to try (start with provided URL, add TPS alternatives)
-    urls_to_try = [start_url]
-
-    # If new-format PRKMS URL, also build TPS search URL from tenderCaseNo
     case_no_m = re.search(r"tenderCaseNo=([^&\s]+)", start_url, re.IGNORECASE)
-    if case_no_m:
-        case_no = case_no_m.group(1)
-        # Old TPS tender search (server-side rendered static HTML)
-        urls_to_try.append(
-            f"https://web.pcc.gov.tw/tps/main/pcc/tps/atm/atmTenderList.do"
-            f"?method=search&tenderCaseNo={case_no}&awardFlag=true"
-        )
-        # Also try old QueryTender search
-        urls_to_try.append(
+    pk_m = re.search(r"pkAtmMain=(\d+)", start_url, re.IGNORECASE)
+    case_no = case_no_m.group(1) if case_no_m else None
+    pk_atm = pk_m.group(1) if pk_m else None
+
+    # Strategy 1: urllib direct HTTP request (bypasses headless detection)
+    ua = (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+    )
+    http_urls = []
+    if pk_atm:
+        http_urls.append(
             f"https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail"
-            f"?tenderCaseNo={case_no}"
+            f"?pkPmsMain={pk_atm}"
         )
-    else:
-        case_no = None
+    if case_no:
+        http_urls += [
+            f"https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail"
+            f"?tenderCaseNo={case_no}",
+            f"https://web.pcc.gov.tw/tps/main/pcc/tps/atm/atmTenderList.do"
+            f"?method=search&tenderCaseNo={case_no}",
+        ]
+    http_urls.append(start_url)
 
-    for try_url in urls_to_try:
-        print(f"[Stage 1] 嘗試URL：{try_url[:120]}")
-        await page.goto(try_url, wait_until="domcontentloaded", timeout=30000)
+    for http_url in http_urls:
         try:
-            await page.wait_for_load_state("networkidle", timeout=12000)
-        except PlaywrightTimeoutError:
-            pass
+            print(f"[Stage 1] urllib GET: {http_url[:120]}")
+            req = _urllib.Request(http_url, headers={"User-Agent": ua, "Accept": "text/html,*/*"})
+            with _urllib.urlopen(req, timeout=15) as resp:
+                raw = resp.read()
+                try:
+                    html = raw.decode("utf-8")
+                except UnicodeDecodeError:
+                    html = raw.decode("big5", errors="replace")
+            if "機關名稱" in html:
+                for pat in [
+                    r"機關名稱[：:]\s*</[^>]*>\s*<[^>]*>\s*([^<\s]{2,30})",
+                    r"機關名稱[：:\s]*([^\s<&\n]{2,30})",
+                    r"機關名稱[\s\S]{0,80}?>\s*([^\s<]{2,30})\s*</",
+                ]:
+                    m = re.search(pat, html)
+                    if m:
+                        agency = strip_html(m.group(1)).strip()
+                        if agency and len(agency) > 1:
+                            print(f"[Stage 1] 機關名稱(urllib)：{agency}")
+                            return agency
+                idx = html.find("機關名稱")
+                print(f"[Stage 1] 機關名稱@{idx}: {repr(html[max(0,idx-20):idx+150])}")
+            else:
+                plain = re.sub(r'<[^>]+>', ' ', html)
+                plain = re.sub(r'\s+', ' ', plain).strip()
+                print(f"[Stage 1] urllib無機關名稱，片段: {plain[:200]}")
+        except Exception as e:
+            print(f"[Stage 1] urllib失敗 {http_url[:60]}: {e}")
+
+    # Strategy 2: Playwright browser (with stealth already applied)
+    await page.goto(start_url, wait_until="domcontentloaded", timeout=30000)
+    try:
+        await page.wait_for_load_state("networkidle", timeout=12000)
+    except PlaywrightTimeoutError:
+        pass
+    try:
+        await page.wait_for_function(
+            "() => document.body.innerText.includes('機關名稱')",
+            timeout=12000,
+        )
+    except PlaywrightTimeoutError:
+        pass
+
+    for sel in [
+        "th:has-text('機關名稱') + td",
+        "td:has-text('機關名稱') + td",
+        "tr:has(th:has-text('機關名稱')) td",
+    ]:
         try:
-            await page.wait_for_function(
-                "() => document.body.innerText.includes('機關名稱')",
-                timeout=10000,
-            )
-        except PlaywrightTimeoutError:
+            loc = page.locator(sel).first
+            if await loc.count() > 0:
+                text = (await loc.inner_text()).strip()
+                if text and len(text) > 1:
+                    print(f"[Stage 1] 機關名稱(DOM)：{text}")
+                    return text
+        except Exception:
             pass
-        await rand_sleep(0.5, 1.0)
 
-        for sel in [
-            "th:has-text('機關名稱') + td",
-            "td:has-text('機關名稱') + td",
-            "tr:has(th:has-text('機關名稱')) td",
-            "tr:has(td:has-text('機關名稱')) td:nth-child(2)",
-        ]:
-            try:
-                loc = page.locator(sel).first
-                if await loc.count() > 0:
-                    text = (await loc.inner_text()).strip()
-                    if text and len(text) > 1:
-                        print(f"[Stage 1] 機關名稱(DOM/{try_url[:40]})：{text}")
-                        return text
-            except Exception:
-                pass
-
-        content = await page.content()
-        for pat in [
-            r"機關名稱[：:]\s*</[^>]+>\s*<[^>]+>\s*([^<\s]{2,30})",
-            r"機關名稱[：:\s]*([^\s<&\n]{2,30})",
-            r"機關名稱[\s\S]{0,100}?>\s*([^\s<]{2,30})\s*</",
-        ]:
-            m = re.search(pat, content)
-            if m:
-                agency = strip_html(m.group(1)).strip()
-                if agency and len(agency) > 1:
-                    print(f"[Stage 1] 機關名稱(regex)：{agency}")
-                    return agency
-
-        plain = re.sub(r'<[^>]+>', ' ', content)
-        plain = re.sub(r'\s+', ' ', plain).strip()
-        print(f"[Stage 1] {try_url[:60]} 純文字片段：{plain[:300]}")
+    content = await page.content()
+    for pat in [
+        r"機關名稱[：:]\s*</[^>]+>\s*<[^>]+>\s*([^<\s]{2,30})",
+        r"機關名稱[：:\s]*([^\s<&\n]{2,30})",
+    ]:
+        m = re.search(pat, content)
+        if m:
+            agency = strip_html(m.group(1)).strip()
+            if agency and len(agency) > 1:
+                print(f"[Stage 1] 機關名稱(DOM regex)：{agency}")
+                return agency
 
     raise RuntimeError("無法取得機關名稱，請確認 START_URL 指向含機關資訊的採購頁面")
 
