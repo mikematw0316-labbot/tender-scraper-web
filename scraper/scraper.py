@@ -86,59 +86,34 @@ def parse_date_to_gregorian(date_raw: str) -> str:
 async def stage1_get_agency(page, start_url: str) -> str:
     print(f"[Stage 1] 訪問：{start_url}")
 
-    # Intercept ALL responses to find AJAX API endpoints
-    api_bodies: list[tuple[str, str]] = []  # (url, body_text)
-    all_response_urls: list[str] = []
+    # Strategy 1: Extract tenderCaseNo from URL and search PCC indexTenderAgent
+    case_no_m = re.search(r"tenderCaseNo=([^&\s]+)", start_url, re.IGNORECASE)
+    if case_no_m:
+        case_no = case_no_m.group(1)
+        print(f"[Stage 1] 從URL取得案號：{case_no}，搜尋採購網…")
+        agency = await _stage1_search_pcc_by_case(page, case_no)
+        if agency:
+            print(f"[Stage 1] 機關名稱(PCC搜尋)：{agency}")
+            return agency
 
-    async def capture_response(response):
-        url = response.url
-        all_response_urls.append(url)
-        ct = response.headers.get("content-type", "")
-        if "js" in ct or "css" in ct or "image" in ct or "font" in ct:
-            return
-        try:
-            body = await response.body()
-            text = body.decode("utf-8", errors="replace")
-            if "機關" in text or "unitName" in text or "orgName" in text or "基隆" in text:
-                api_bodies.append((url, text))
-                print(f"[Stage 1] API hit({response.status}): {url[:140]}")
-        except Exception:
-            pass
-
-    page.on("response", capture_response)
-
+    # Strategy 2: Load the bulletin board page and try DOM/regex extraction
     await page.goto(start_url, wait_until="domcontentloaded", timeout=30000)
     try:
-        await page.wait_for_load_state("networkidle", timeout=20000)
+        await page.wait_for_load_state("networkidle", timeout=15000)
     except PlaywrightTimeoutError:
         pass
-    await rand_sleep(2.0, 3.0)  # extra time for AJAX to complete
+    try:
+        await page.wait_for_function(
+            "() => document.body.innerText.includes('機關名稱')",
+            timeout=15000,
+        )
+    except PlaywrightTimeoutError:
+        pass
 
-    # Try to extract from intercepted API response first
-    for api_url, body in api_bodies:
-        # Try JSON field
-        for key in ["unitName", "orgName", "unitname", "organ", "機關名稱"]:
-            m = re.search(rf'"{re.escape(key)}"\s*:\s*"([^"{{}}]+)"', body)
-            if m:
-                agency = m.group(1).strip()
-                if agency and len(agency) > 1:
-                    print(f"[Stage 1] 機關名稱(API)：{agency}")
-                    return agency
-        # Try HTML pattern
-        m = re.search(r"機關名稱[\s\S]{0,50}?>([^<]{2,30})<", body)
-        if m:
-            agency = m.group(1).strip()
-            if agency and len(agency) > 1:
-                print(f"[Stage 1] 機關名稱(API-html)：{agency}")
-                return agency
-        print(f"[Stage 1] API body snippet: {body[:300]}")
-
-    # Fallback: try DOM selectors
     for sel in [
         "th:has-text('機關名稱') + td",
         "td:has-text('機關名稱') + td",
         "tr:has(th:has-text('機關名稱')) td",
-        "tr:has(td:has-text('機關名稱')) td:nth-child(2)",
     ]:
         try:
             loc = page.locator(sel).first
@@ -150,18 +125,7 @@ async def stage1_get_agency(page, start_url: str) -> str:
         except Exception:
             pass
 
-    # Regex fallback on page HTML
     content = await page.content()
-    print(f"[Stage 1] 頁面大小：{len(content)}b，API回應數：{len(api_bodies)}")
-    # Print HTML between <body> tags to find data location
-    body_m = re.search(r"<body[^>]*>([\s\S]*)</body>", content, re.IGNORECASE)
-    if body_m:
-        body_html = body_m.group(1)
-        # Strip nav/script/style for clarity
-        body_clean = re.sub(r"<(?:script|style|nav|header)[^>]*>[\s\S]*?</(?:script|style|nav|header)>", "", body_html, flags=re.IGNORECASE)
-        body_plain = re.sub(r"<[^>]+>", " ", body_clean)
-        body_plain = re.sub(r"\s+", " ", body_plain).strip()
-        print(f"[Stage 1] body純文字(前3000): {body_plain[:3000]}")
     for pat in [
         r"機關名稱[：:]\s*</[^>]+>\s*<[^>]+>\s*([^<\s]{2,30})",
         r"機關名稱[：:\s]*([^\s<&\n]{2,30})",
@@ -170,11 +134,72 @@ async def stage1_get_agency(page, start_url: str) -> str:
         m = re.search(pat, content)
         if m:
             agency = strip_html(m.group(1)).strip()
-            if agency:
-                print(f"[Stage 1] 機關名稱（regex）：{agency}")
+            if agency and len(agency) > 1:
+                print(f"[Stage 1] 機關名稱(regex)：{agency}")
                 return agency
 
     raise RuntimeError("無法取得機關名稱，請確認 START_URL 指向含機關資訊的採購頁面")
+
+
+async def _stage1_search_pcc_by_case(page, case_no: str) -> str:
+    """Search PCC indexTenderAgent with case number to find agency name."""
+    await page.goto(PCC_SEARCH_URL, wait_until="domcontentloaded", timeout=30000)
+    try:
+        await page.wait_for_load_state("networkidle", timeout=12000)
+    except PlaywrightTimeoutError:
+        pass
+    await rand_sleep()
+
+    # Set tenderId only; use very wide date range (5 years in ROC)
+    from datetime import date
+    today = date.today()
+    roc_end = f"{today.year - 1911}/{today.month:02d}/{today.day:02d}"
+    roc_start = f"{today.year - 1911 - 5}/{today.month:02d}/{today.day:02d}"
+    await page.evaluate(
+        """([tenderId, startDate, endDate]) => {
+            if (typeof $ !== 'undefined') {
+                $("input[name='tenderId']").val(tenderId);
+                $("input[name='awardAnnounceStartDate']").val(startDate);
+                $("input[name='awardAnnounceEndDate']").val(endDate);
+            }
+        }""",
+        [case_no, roc_start, roc_end],
+    )
+    await rand_sleep(0.5, 1.0)
+    try:
+        await page.evaluate("agentTenderSearch()")
+    except Exception:
+        pass
+    try:
+        await page.wait_for_load_state("networkidle", timeout=20000)
+    except PlaywrightTimeoutError:
+        pass
+    await rand_sleep()
+
+    atm_html = await page.evaluate(
+        "() => { const el = document.getElementById('atm'); return el ? el.outerHTML : ''; }"
+    )
+    print(f"[Stage 1-PCC] atm_size={len(atm_html)}")
+    if not atm_html or "無符合" in atm_html or "查無資料" in atm_html:
+        return ""
+
+    # Find agency name in results table (機關名稱 column)
+    for row in re.findall(r"<tr[^>]*>(.*?)</tr>", atm_html, re.IGNORECASE | re.DOTALL):
+        cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.IGNORECASE | re.DOTALL)
+        texts = [strip_html(c).strip() for c in cells]
+        for i, t in enumerate(texts):
+            if t == case_no and i + 1 < len(texts):
+                candidate = texts[i + 1]
+                if len(candidate) > 2:
+                    return candidate
+        # Also try: if 'case_no' appears anywhere in the row, get org from col 1 or 2
+        plain = strip_html(row)
+        if case_no in plain:
+            m = re.search(r"([\u4e00-\u9fff]{3,20}(?:政府|市|縣|局|處|署|院|委|部|廳)[\u4e00-\u9fff]{0,10})", plain)
+            if m:
+                return m.group(1)
+
+    return ""
 
 
 # ─────────────────────────────────────────
