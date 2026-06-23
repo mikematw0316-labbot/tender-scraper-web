@@ -153,7 +153,15 @@ async def stage1_get_agency(page, start_url: str) -> str:
     # Regex fallback on page HTML
     content = await page.content()
     print(f"[Stage 1] 頁面大小：{len(content)}b，API回應數：{len(api_bodies)}")
-    print(f"[Stage 1] 全部response URLs({len(all_response_urls)})：{all_response_urls[:20]}")
+    # Print HTML between <body> tags to find data location
+    body_m = re.search(r"<body[^>]*>([\s\S]*)</body>", content, re.IGNORECASE)
+    if body_m:
+        body_html = body_m.group(1)
+        # Strip nav/script/style for clarity
+        body_clean = re.sub(r"<(?:script|style|nav|header)[^>]*>[\s\S]*?</(?:script|style|nav|header)>", "", body_html, flags=re.IGNORECASE)
+        body_plain = re.sub(r"<[^>]+>", " ", body_clean)
+        body_plain = re.sub(r"\s+", " ", body_plain).strip()
+        print(f"[Stage 1] body純文字(前3000): {body_plain[:3000]}")
     for pat in [
         r"機關名稱[：:]\s*</[^>]+>\s*<[^>]+>\s*([^<\s]{2,30})",
         r"機關名稱[：:\s]*([^\s<&\n]{2,30})",
