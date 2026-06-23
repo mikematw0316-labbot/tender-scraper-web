@@ -72,12 +72,14 @@ def strip_html(html: str) -> str:
 def parse_date_to_gregorian(date_raw: str) -> str:
     if not date_raw:
         return ""
-    m = re.search(r"(\d{3})[/\-](\d{1,2})[/\-](\d{1,2})", date_raw)
-    if m:
-        return f"{int(m.group(1))+1911}/{int(m.group(2)):02d}/{int(m.group(3)):02d}"
+    # Try 4-digit Gregorian year FIRST (e.g. "2026/1/6" from taiwanbuying)
     m = re.search(r"(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})", date_raw)
     if m:
         return f"{m.group(1)}/{int(m.group(2)):02d}/{int(m.group(3)):02d}"
+    # Then try 3-digit ROC year (e.g. "114/05/01")
+    m = re.search(r"(\d{3})[/\-](\d{1,2})[/\-](\d{1,2})", date_raw)
+    if m:
+        return f"{int(m.group(1))+1911}/{int(m.group(2)):02d}/{int(m.group(3)):02d}"
     return date_raw
 
 
