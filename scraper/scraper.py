@@ -175,6 +175,14 @@ async def _stage1_search_pcc_by_case(page, case_no: str) -> str:
             await page.wait_for_load_state("networkidle", timeout=15000)
         except PlaywrightTimeoutError:
             pass
+        # Wait for #atm to be populated by JavaScript
+        try:
+            await page.wait_for_function(
+                "() => { const el = document.getElementById('atm'); return el && el.innerHTML.trim().length > 20; }",
+                timeout=15000,
+            )
+        except PlaywrightTimeoutError:
+            pass
         await rand_sleep(1.0, 2.0)
         print(f"[Stage 1-PCC] 當前URL: {page.url[:120]}")
 
