@@ -83,6 +83,12 @@ a.row-link:hover { text-decoration: underline; }
   <!-- 觸發分析 -->
   <div class="card">
     <h2>🔍 輸入採購網網址，開始分析</h2>
+    <div class="form-row" style="margin-bottom:8px">
+      <input type="password" id="ghToken" placeholder="GitHub Token（workflow 權限，輸入一次即記住）"
+             oninput="saveToken()" style="flex:0 0 340px">
+      <a href="https://github.com/settings/tokens/new?scopes=workflow&description=tender-scraper" target="_blank"
+         class="btn btn-gray" style="font-size:12px;text-decoration:none">取得 Token</a>
+    </div>
     <div class="form-row">
       <input type="text" id="startUrl" placeholder="貼上政府電子採購網網址，例如：https://web.pcc.gov.tw/prkms/tender/..."
              oninput="updateBtn()">
@@ -147,29 +153,25 @@ function rowArr(r) {
           r.投標廠商家數, r.得標廠商, r.決標金額, r.公報URL];
 }
 
-function updateBtn() {
-  const url = document.getElementById('startUrl').value.trim();
-  document.getElementById('analyzeBtn').disabled = !url;
+const REPO = 'mikematw0316-labbot/tender-scraper-web';
+const WORKFLOW = 'scrape.yml';
+
+function saveToken() {
+  const t = document.getElementById('ghToken').value.trim();
+  if (t) localStorage.setItem('gh_token', t);
+  updateBtn();
 }
 
-// ── 觸發：呼叫本地 trigger server（cloudflared tunnel） ─
-let apiUrl = null;
-async function getApiUrl() {
-  if (apiUrl) return apiUrl;
-  try {
-    // Use raw.githubusercontent.com — updates instantly after push, no GitHub Pages cache delay
-    const r = await fetch('https://raw.githubusercontent.com/mikematw0316-labbot/tender-scraper-web/main/data/api_url.json?t=' + Date.now());
-    const d = await r.json();
-    apiUrl = d.api_url;
-    return apiUrl;
-  } catch(e) {
-    return null;
-  }
+function updateBtn() {
+  const url   = document.getElementById('startUrl').value.trim();
+  const token = document.getElementById('ghToken').value.trim() || localStorage.getItem('gh_token') || '';
+  document.getElementById('analyzeBtn').disabled = !(url && token);
 }
 
 async function openActions() {
   const startUrl = document.getElementById('startUrl').value.trim();
-  if (!startUrl) return;
+  const token    = document.getElementById('ghToken').value.trim() || localStorage.getItem('gh_token') || '';
+  if (!startUrl || !token) return;
 
   const box = document.getElementById('triggerStatus');
   box.className = 'status-box';
@@ -178,23 +180,32 @@ async function openActions() {
   document.getElementById('analyzeBtn').disabled = true;
 
   try {
-    const endpoint = await getApiUrl();
-    if (!endpoint) throw new Error('無法取得伺服器位址，請稍後再試');
+    const resp = await fetch(
+      `https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ref: 'main',
+          inputs: { start_url: startUrl },
+        }),
+      }
+    );
 
-    const resp = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ start_url: startUrl }),
-    });
-    const data = await resp.json();
-
-    if (data.ok) {
+    if (resp.status === 204) {
       box.className = 'status-box success';
       box.innerHTML = `✅ 已成功觸發！雲端爬蟲執行中（約 15 分鐘）。<br>
         完成後點上方「🔄 重新整理」即可看到結果。<br>
         <a href="${ACTIONS_URL}" target="_blank" style="font-size:12px">查看執行進度</a>`;
     } else {
-      throw new Error(data.error || '觸發失敗');
+      const err = await resp.json().catch(() => ({}));
+      if (resp.status === 401) throw new Error('Token 無效或過期，請重新取得');
+      if (resp.status === 403) throw new Error('Token 缺少 workflow 權限');
+      throw new Error(err.message || `HTTP ${resp.status}`);
     }
   } catch(e) {
     box.className = 'status-box error';
@@ -330,6 +341,8 @@ function copyForSheets() {
 
 // 初始化
 (function init() {
+  const saved = localStorage.getItem('gh_token');
+  if (saved) document.getElementById('ghToken').value = saved;
   updateBtn();
   loadData();
 })();
