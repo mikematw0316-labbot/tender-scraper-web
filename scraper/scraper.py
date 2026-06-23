@@ -220,6 +220,8 @@ async def stage3_collect_cases(page, year_url: str) -> list[dict]:
     print(f"[Stage 3] 頁面大小：{len(content)} bytes")
     if len(content) < 2000:
         print(f"[Stage 3] 頁面內容（debug）：{content[:800]}")
+    else:
+        print(f"[Stage 3] 頁面片段（debug）：{content[:1500]}")
     rec_pattern = re.compile(r"ShowCCDetail\.ASP\?RecNo=(\d+)", re.IGNORECASE)
 
     candidates: list[tuple[str, str]] = []
@@ -269,12 +271,20 @@ async def stage3_collect_cases(page, year_url: str) -> list[dict]:
         detail_url = f"{TB_BASE}/ShowCCDetail.ASP?RecNo={rec_no}"
         try:
             detail = await _fetch_case_detail(page, detail_url)
-            if detail:
-                name = detail.get("tender_name", "") or link_text
-                detail["tender_name"] = name
-                if contains_keyword(name):
-                    matched.append(detail)
-                    print(f"  [{i+1}] ✓ {name[:50]}")
+            if detail is None:
+                # Use link text as fallback so keyword cases still get included
+                detail = {
+                    "publish_date_raw": "",
+                    "publish_date": "",
+                    "tender_id": "",
+                    "tender_name": link_text,
+                    "source_url": detail_url,
+                }
+            name = detail.get("tender_name", "") or link_text
+            detail["tender_name"] = name
+            if contains_keyword(name):
+                matched.append(detail)
+                print(f"  [{i+1}] ✓ {name[:50]}")
         except Exception as e:
             print(f"  [{i+1}] ⚠ RecNo={rec_no}：{e}")
         await rand_sleep(0.4, 1.0)
@@ -285,7 +295,14 @@ async def stage3_collect_cases(page, year_url: str) -> list[dict]:
 
 async def _fetch_case_detail(page, detail_url: str) -> dict | None:
     await page.goto(detail_url, wait_until="domcontentloaded", timeout=20000)
+    try:
+        await page.wait_for_load_state("networkidle", timeout=8000)
+    except PlaywrightTimeoutError:
+        pass
     content = await page.content()
+    if len(content) < 500:
+        print(f"    [detail] 詳情頁太小({len(content)}b)：{content[:300]}")
+        return None
 
     def find(labels):
         for label in labels:
