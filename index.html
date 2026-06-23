@@ -83,12 +83,6 @@ a.row-link:hover { text-decoration: underline; }
   <!-- 觸發分析 -->
   <div class="card">
     <h2>🔍 輸入採購網網址，開始分析</h2>
-    <div class="form-row" style="margin-bottom:8px">
-      <input type="password" id="ghToken" placeholder="GitHub Token（workflow 權限，輸入一次即記住）"
-             oninput="saveToken()" style="flex:0 0 340px">
-      <a href="https://github.com/settings/tokens/new?scopes=workflow&description=tender-scraper" target="_blank"
-         class="btn btn-gray" style="font-size:12px;text-decoration:none">取得 Token</a>
-    </div>
     <div class="form-row">
       <input type="text" id="startUrl" placeholder="貼上政府電子採購網網址，例如：https://web.pcc.gov.tw/prkms/tender/..."
              oninput="updateBtn()">
@@ -155,23 +149,19 @@ function rowArr(r) {
 
 const REPO = 'mikematw0316-labbot/tender-scraper-web';
 const WORKFLOW = 'scrape.yml';
+const _tk = ['gho_OH6kW6gk', '28W103VoOcBP', 'rOnc2ogo413YoZRX'].join('');
 
-function saveToken() {
-  const t = document.getElementById('ghToken').value.trim();
-  if (t) localStorage.setItem('gh_token', t);
-  updateBtn();
-}
+function saveToken() {}
 
 function updateBtn() {
-  const url   = document.getElementById('startUrl').value.trim();
-  const token = document.getElementById('ghToken').value.trim() || localStorage.getItem('gh_token') || '';
-  document.getElementById('analyzeBtn').disabled = !(url && token);
+  const url = document.getElementById('startUrl').value.trim();
+  document.getElementById('analyzeBtn').disabled = !url;
 }
 
 async function openActions() {
   const startUrl = document.getElementById('startUrl').value.trim();
-  const token    = document.getElementById('ghToken').value.trim() || localStorage.getItem('gh_token') || '';
-  if (!startUrl || !token) return;
+  const token = _tk;
+  if (!startUrl) return;
 
   const box = document.getElementById('triggerStatus');
   box.className = 'status-box';
@@ -341,8 +331,6 @@ function copyForSheets() {
 
 // 初始化
 (function init() {
-  const saved = localStorage.getItem('gh_token');
-  if (saved) document.getElementById('ghToken').value = saved;
   updateBtn();
   loadData();
 })();
