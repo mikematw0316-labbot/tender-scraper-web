@@ -1,0 +1,9 @@
+{
+  "name": "tender-scraper-web",
+  "version": "2.0.0",
+  "description": "政府採購標案彙整網頁工具",
+  "dependencies": {
+    "node-fetch": "2.7.0",
+    "iconv-lite": "0.6.3"
+  }
+}
