@@ -458,7 +458,13 @@ async def stage5_extract_award(page, detail_url: str, case: dict) -> dict | None
 
     try:
         content = await detail_page.content()
-        return _parse_award_fields(content, case)
+        result = _parse_award_fields(content, case)
+        # Debug: if key fields empty, show page snippet
+        if not result.get("機關名稱") and not result.get("決標日期"):
+            plain = re.sub(r'<[^>]+>', ' ', content)
+            plain = re.sub(r'\s+', ' ', plain).strip()
+            print(f"  [5-debug] PCC page {detail_url} empty fields, text={plain[:400]}")
+        return result
     finally:
         if detail_page is not page:
             await detail_page.close()
@@ -468,13 +474,15 @@ def _parse_award_fields(content: str, case: dict) -> dict:
     def field(*labels) -> str:
         for label in labels:
             for pat in [
-                rf"{re.escape(label)}\s*</t[dh]>\s*<t[dh][^>]*>\s*(.*?)\s*</t[dh]>",
-                rf"{re.escape(label)}[：:\s]{{0,3}}([^\s<&\n]{{1,150}})",
+                # Label is actual cell text (preceded by >), followed by sibling cell
+                rf">{re.escape(label)}\s*</t[dh]>\s*<t[dh][^>]*>\s*(.*?)\s*</t[dh]>",
+                # Label in th, value in next td (PCC common structure)
+                rf"<t[dh][^>]*>\s*{re.escape(label)}\s*</t[dh]>\s*<t[dh][^>]*>\s*(.*?)\s*</t[dh]>",
             ]:
                 m = re.search(pat, content, re.IGNORECASE | re.DOTALL)
                 if m:
                     val = strip_html(m.group(1)).strip()
-                    if val and val not in ("&nbsp;", "—", "-"):
+                    if val and val not in ("&nbsp;", "—", "-", ""):
                         return val
         return ""
 
