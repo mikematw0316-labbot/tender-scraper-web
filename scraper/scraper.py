@@ -325,7 +325,11 @@ async def _fetch_case_detail(page, detail_url: str) -> dict | None:
     def find(labels):
         for label in labels:
             for pat in [
+                # <b>LABEL</b> : VALUE<br>  (taiwanbuying format)
+                rf"<b>{re.escape(label)}</b>\s*[：:]\s*([^<\n]{{1,200}}?)(?:<br|<\/)",
+                # Table cell format
                 rf"{re.escape(label)}\s*</t[dh]>\s*<t[dh][^>]*>\s*([^<]{{1,200}})",
+                # Generic label: value
                 rf"{re.escape(label)}[：:\s]{{0,3}}([^\s<&\n]{{2,100}})",
             ]:
                 m = re.search(pat, content, re.IGNORECASE | re.DOTALL)
@@ -335,9 +339,15 @@ async def _fetch_case_detail(page, detail_url: str) -> dict | None:
                         return val
         return ""
 
-    publish_date_raw = find(["公布日期", "公佈日期", "公告日期"])
+    publish_date_raw = find(["公布日期", "公佈日期", "公告日期", "決標日期", "公告(決標)日期"])
     tender_id = find(["採購案號", "案號", "標案案號"])
     tender_name = find(["採購名稱", "標案名稱", "案件名稱"])
+
+    # If no date found, look for any date pattern in the page
+    if not publish_date_raw:
+        date_m = re.search(r"(\d{3})[/\-](\d{1,2})[/\-](\d{1,2})", content)
+        if date_m:
+            publish_date_raw = f"{date_m.group(1)}/{int(date_m.group(2)):02d}/{int(date_m.group(3)):02d}"
 
     if not tender_id and not tender_name:
         return None
