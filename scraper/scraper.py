@@ -86,20 +86,22 @@ def parse_date_to_gregorian(date_raw: str) -> str:
 async def stage1_get_agency(page, start_url: str) -> str:
     print(f"[Stage 1] 訪問：{start_url}")
 
-    # Intercept all responses to catch the AJAX API that returns tender data
+    # Intercept ALL responses to find AJAX API endpoints
     api_bodies: list[tuple[str, str]] = []  # (url, body_text)
+    all_response_urls: list[str] = []
 
     async def capture_response(response):
         url = response.url
+        all_response_urls.append(url)
         ct = response.headers.get("content-type", "")
-        if not ("json" in ct or "html" in ct or "text" in ct):
+        if "js" in ct or "css" in ct or "image" in ct or "font" in ct:
             return
         try:
             body = await response.body()
-            if b"\xe6\xa9\x9f\xe9\x97\x9c" in body or b"unitName" in body or b"\xe6\xa9\x9f\xe9\x97\x9c\xe5\x90\x8d\xe7\xa8\xb1" in body:
-                text = body.decode("utf-8", errors="replace")
+            text = body.decode("utf-8", errors="replace")
+            if "機關" in text or "unitName" in text or "orgName" in text or "基隆" in text:
                 api_bodies.append((url, text))
-                print(f"[Stage 1] API hit: {url[:120]}")
+                print(f"[Stage 1] API hit({response.status}): {url[:140]}")
         except Exception:
             pass
 
@@ -151,6 +153,7 @@ async def stage1_get_agency(page, start_url: str) -> str:
     # Regex fallback on page HTML
     content = await page.content()
     print(f"[Stage 1] 頁面大小：{len(content)}b，API回應數：{len(api_bodies)}")
+    print(f"[Stage 1] 全部response URLs({len(all_response_urls)})：{all_response_urls[:20]}")
     for pat in [
         r"機關名稱[：:]\s*</[^>]+>\s*<[^>]+>\s*([^<\s]{2,30})",
         r"機關名稱[：:\s]*([^\s<&\n]{2,30})",
