@@ -156,6 +156,14 @@ async def _stage1_search_pcc_by_case(page, case_no: str) -> str:
 
     PCC_RESULT_URL = "https://web.pcc.gov.tw/prkms/tender/common/agent/readTenderAgent"
 
+    # Establish PCC session by visiting indexTenderAgent first
+    await page.goto(PCC_SEARCH_URL, wait_until="domcontentloaded", timeout=30000)
+    try:
+        await page.wait_for_load_state("networkidle", timeout=12000)
+    except PlaywrightTimeoutError:
+        pass
+    await rand_sleep()
+
     for roc_start, roc_end in date_windows:
         # Encode dates: "/" → "%2F"
         s = roc_start.replace("/", "%2F")
