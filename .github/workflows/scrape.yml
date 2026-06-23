@@ -1,0 +1,44 @@
+name: 爬取政府採購標案
+
+on:
+  # 每天 08:30 台灣時間 (UTC+8) = UTC 00:30
+  schedule:
+    - cron: '30 0 * * *'
+  # 手動觸發
+  workflow_dispatch:
+    inputs:
+      keywords:
+        description: '關鍵字（逗號分隔，留空用預設值）'
+        required: false
+        default: '設計,監造,耐震,補強,技術'
+      lookback_days:
+        description: '回溯天數'
+        required: false
+        default: '90'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run scraper
+        run: python scraper/scraper.py
+
+      - name: Commit results
+        run: |
+          git config user.name  "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add data/results.json
+          git diff --staged --quiet && echo "No changes" || \
+            git commit -m "chore: update tender data $(date +'%Y-%m-%d %H:%M')"
+          git push

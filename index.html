@@ -14,15 +14,12 @@ header h1 { font-size: 22px; font-weight: 700; }
 header p { font-size: 13px; opacity: 0.8; margin-top: 2px; }
 .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .card h2 { font-size: 15px; font-weight: 700; color: #1a365d; margin-bottom: 14px; }
-label { display: block; font-size: 13px; font-weight: 600; color: #4a5568; margin-bottom: 5px; }
-input[type="date"], input[type="text"] {
-  width: 100%; padding: 9px 12px; border: 1.5px solid #e2e8f0; border-radius: 7px;
-  font-size: 14px; margin-bottom: 14px; transition: border-color 0.2s; font-family: inherit;
-}
-input:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 3px rgba(43,108,176,0.1); }
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-@media (max-width: 700px) { .row,.row3 { grid-template-columns: 1fr; } }
+.info-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 14px; align-items: center; }
+.info-item { font-size: 13px; color: #4a5568; }
+.info-item strong { color: #2d3748; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.badge-ok   { background: #c6f6d5; color: #22543d; }
+.badge-warn { background: #feebc8; color: #7b341e; }
 .btn { padding: 10px 18px; border: none; border-radius: 7px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
 .btn-primary { background: #2b6cb0; color: white; }
 .btn-primary:hover:not(:disabled) { background: #2c5282; }
@@ -31,34 +28,35 @@ input:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 3px rgba(4
 .btn-info { background: #2c7a7b; color: white; }
 .btn-info:hover { background: #285e61; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.status-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.actions { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
 .spinner { width: 18px; height: 18px; border: 2.5px solid #bee3f8; border-top-color: #2b6cb0; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; flex-shrink: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
-#status-text { font-size: 13px; color: #4a5568; font-weight: 500; }
-.progress-wrap { background: #e2e8f0; border-radius: 4px; height: 5px; margin-top: 10px; display: none; }
-.progress-bar { background: linear-gradient(90deg, #2b6cb0, #4299e1); height: 100%; border-radius: 4px; transition: width 0.4s ease; }
-.log-wrap { background: #1a202c; border-radius: 8px; padding: 14px 16px; max-height: 240px; overflow-y: auto; display: none; font-family: 'Courier New', monospace; font-size: 12.5px; margin-bottom: 16px; }
-.log-wrap .e { padding: 1.5px 0; line-height: 1.6; }
-.log-wrap .step { color: #63b3ed; }
-.log-wrap .ok   { color: #68d391; }
-.log-wrap .warn { color: #f6e05e; }
-.log-wrap .err  { color: #fc8181; }
-.log-wrap .info { color: #a0aec0; }
+.filter-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.filter-row label { font-size: 13px; color: #4a5568; font-weight: 600; }
+.filter-row input[type="text"] { padding: 7px 11px; border: 1.5px solid #e2e8f0; border-radius: 7px; font-size: 13px; font-family: inherit; }
+.filter-row input:focus { outline: none; border-color: #2b6cb0; }
+.filter-row select { padding: 7px 11px; border: 1.5px solid #e2e8f0; border-radius: 7px; font-size: 13px; }
 .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #ebf8ff; color: #2b6cb0; }
 .tag-tb { background: #fef3c7; color: #92400e; }
-.actions { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 .table-wrap { overflow-x: auto; border-radius: 7px; border: 1px solid #e2e8f0; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
 thead tr { background: #1a365d; color: white; }
-th { padding: 10px; text-align: left; font-weight: 600; white-space: nowrap; }
+th { padding: 10px; text-align: left; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none; }
+th:hover { background: #2a4a7f; }
+th.sort-asc::after  { content: ' ▲'; }
+th.sort-desc::after { content: ' ▼'; }
 td { padding: 8px 10px; border-bottom: 1px solid #edf2f7; vertical-align: top; word-break: break-all; }
 td.nowrap { white-space: nowrap; }
 tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: #f7fafc; }
 .empty-state { text-align: center; padding: 48px; color: #a0aec0; }
-.hint { font-size: 12px; color: #718096; margin-top: -10px; margin-bottom: 14px; }
 a.row-link { color: #2b6cb0; text-decoration: none; }
 a.row-link:hover { text-decoration: underline; }
+.result-count { font-size: 13px; color: #718096; margin-left: auto; }
+.gh-link { font-size: 12px; color: #a0aec0; text-decoration: none; }
+.gh-link:hover { color: #4a5568; }
+.trigger-note { font-size: 12px; color: #718096; margin-top: 6px; }
+.trigger-note a { color: #2b6cb0; }
 </style>
 </head>
 <body>
@@ -68,472 +66,161 @@ a.row-link:hover { text-decoration: underline; }
     <div class="icon">🏛️</div>
     <div>
       <h1>政府採購標案彙整工具</h1>
-      <p>自動爬取政府電子採購網（決標公告）＋ 台灣採購公報網（招標公告），彙整相關標案</p>
+      <p>每日自動爬取政府電子採購網（決標公告）＋ 台灣採購公報網（招標公告）</p>
     </div>
   </header>
 
-  <div class="card">
-    <h2>⚙️ 查詢設定</h2>
-    <div class="row">
-      <div>
-        <label for="keywords">篩選關鍵字（逗號分隔）</label>
-        <input type="text" id="keywords" value="設計,監造,耐震,補強,技術" />
-      </div>
-      <div>
-        <label for="lookbackDays">回溯天數（決標查詢日期範圍）</label>
-        <input type="text" id="lookbackDays" value="90" />
-        <div class="hint">例：90 代表從今天往前90天</div>
-      </div>
+  <div class="card" id="statusCard">
+    <h2>📊 資料狀態</h2>
+    <div class="info-row" id="infoRow">
+      <div class="info-item">資料更新時間：<strong id="updatedAt">載入中…</strong></div>
+      <div class="info-item">查詢關鍵字：<strong id="keywords">—</strong></div>
+      <div class="info-item">日期範圍：<strong id="dateRange">—</strong></div>
+      <div class="info-item">總筆數：<strong id="totalCount">—</strong></div>
     </div>
-    <div class="row">
-      <div>
-        <label>查詢來源</label>
-        <div style="display:flex;gap:16px;padding:6px 0 14px">
-          <label style="display:flex;gap:6px;align-items:center;font-weight:400"><input type="checkbox" id="srcPCC" checked> 政府採購網（決標公告）</label>
-          <label style="display:flex;gap:6px;align-items:center;font-weight:400"><input type="checkbox" id="srcTB" checked> 台灣採購公報網（招標公告）</label>
-        </div>
-      </div>
-    </div>
-    <div class="status-row">
-      <button class="btn btn-primary" id="startBtn" onclick="startScraping()">🔍 開始查詢</button>
-      <button class="btn" id="stopBtn" onclick="stopScraping()" style="background:#e53e3e;color:white;display:none">⏹ 停止</button>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="loadData()">🔄 重新整理</button>
+      <button class="btn btn-success" onclick="downloadCSV()">⬇ 下載 CSV</button>
+      <button class="btn btn-info" onclick="copyForSheets()">📋 複製到 Google Sheets</button>
       <div class="spinner" id="spinner"></div>
-      <span id="status-text"></span>
+      <span id="statusMsg" style="font-size:13px;color:#718096"></span>
     </div>
-    <div class="progress-wrap" id="progressWrap">
-      <div class="progress-bar" id="progressBar" style="width:0%"></div>
+    <div class="trigger-note">
+      ⏰ 資料每天 <strong>08:30</strong> 自動更新。也可到
+      <a href="https://github.com/mikematw0316-labbot/tender-scraper-web/actions" target="_blank">GitHub Actions</a>
+      手動觸發立即更新。
     </div>
   </div>
 
-  <div class="log-wrap" id="log"></div>
-
   <div class="card" id="resultsCard" style="display:none">
-    <h2>📊 查詢結果 <span class="tag" id="resultCount">0 筆</span></h2>
-    <div class="actions">
-      <button class="btn btn-success" onclick="downloadCSV()">⬇ 下載 CSV</button>
-      <button class="btn btn-info" onclick="copyForSheets()">📋 複製到 Google Sheets</button>
+    <div class="filter-row">
+      <label>篩選：</label>
+      <input type="text" id="filterText" placeholder="輸入關鍵字篩選…" oninput="applyFilter()" style="min-width:180px">
+      <select id="filterSrc" onchange="applyFilter()">
+        <option value="">全部來源</option>
+        <option value="PCC決標">PCC決標</option>
+        <option value="公報網招標">公報網招標</option>
+      </select>
+      <select id="filterKw" onchange="applyFilter()">
+        <option value="">全部關鍵字</option>
+      </select>
+      <span class="result-count" id="resultCount">0 筆</span>
     </div>
     <div class="table-wrap"><div id="resultsTable"></div></div>
   </div>
 
 </div>
 <script>
-// ══════════════════════════════════════════════════════
-// 設定
-// ══════════════════════════════════════════════════════
-const API_BASE = window.location.hostname.includes('github.io')
-  ? 'https://tender-scraper.vercel.app'
-  : '';
+const DATA_URL = 'data/results.json';
+const COLS = ['來源','機關名稱','標案名稱','案號','公告/決標日期','決標金額','搜尋關鍵字','詳細連結'];
 
-const PCC_BASE = 'https://web.pcc.gov.tw';
-const TB_BASE  = 'https://www.taiwanbuying.com.tw';
+let allData = [];
+let filtered = [];
+let sortCol = -1, sortDir = 1;
 
-let results = [], isRunning = false, shouldStop = false;
-const cookieStore = {};
-
-// ── 後端代理請求 ──────────────────────────────────────
-async function backendFetch(url, opts = {}) {
-  const domain = new URL(url).hostname;
-  const payload = {
-    url,
-    method: opts.method || 'GET',
-    body: opts.body || undefined,
-    headers: opts.headers || {},
-    cookies: cookieStore[domain] || '',
-  };
-  const resp = await fetch(API_BASE + '/api/proxy', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({ error: resp.statusText }));
-    throw new Error(err.error || `proxy 錯誤 ${resp.status}`);
-  }
-  const data = await resp.json();
-  // 保存 Cookie
-  if (data.setCookie) {
-    data.setCookie.split(/,(?=[^;]+=)/).forEach(part => {
-      const m = part.trim().match(/^([^=;]+)=([^;]*)/);
-      if (m) {
-        const existing = cookieStore[domain] || '';
-        const name = m[1].trim();
-        // 更新或新增 cookie
-        const parts = existing.split('; ').filter(p => !p.startsWith(name + '='));
-        parts.push(`${name}=${m[2].trim()}`);
-        cookieStore[domain] = parts.join('; ');
-      }
-    });
-  }
-  return data.html || '';
+function rowArr(r) {
+  return [r.src, r.agency, r.tenderName, r.tenderId, r.pubDate, r.amount, r.keyword, r.detailLink];
 }
 
-const dom = html => new DOMParser().parseFromString(html, 'text/html');
-const delay = (lo=600,hi=1500) => new Promise(r=>setTimeout(r, lo + Math.random()*(hi-lo)));
+async function loadData() {
+  document.getElementById('spinner').style.display = 'inline-block';
+  document.getElementById('statusMsg').textContent = '載入中…';
+  try {
+    const resp = await fetch(DATA_URL + '?t=' + Date.now());
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
 
-// ── UI 工具 ───────────────────────────────────────────
-function log(msg, type='info') {
-  const el = document.getElementById('log');
-  el.style.display = 'block';
-  const d = document.createElement('div');
-  d.className = 'e ' + type;
-  d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-  el.appendChild(d);
-  el.scrollTop = el.scrollHeight;
-}
-function setStatus(t) { document.getElementById('status-text').textContent = t; }
-function setProgress(p) {
-  document.getElementById('progressWrap').style.display = 'block';
-  document.getElementById('progressBar').style.width = Math.min(p,100)+'%';
-}
+    // Update header info
+    const d = new Date(data.updatedAt);
+    document.getElementById('updatedAt').textContent =
+      d.toLocaleDateString('zh-TW') + ' ' + d.toLocaleTimeString('zh-TW');
+    document.getElementById('keywords').textContent = (data.keywords || []).join('、');
+    document.getElementById('dateRange').textContent =
+      `${data.dateRange?.start || ''} ～ ${data.dateRange?.end || ''}`;
+    document.getElementById('totalCount').textContent = `${data.total || 0} 筆`;
 
-// ── 日期工具 ──────────────────────────────────────────
-function dateToGregorian(dt) {
-  // 回傳 YYYY/MM/DD 格式（西元年，PCC 決標查詢用）
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth()+1).padStart(2,'0');
-  const d = String(dt.getDate()).padStart(2,'0');
-  return `${y}/${m}/${d}`;
-}
-function rocDateToDisplay(rocStr) {
-  // 115/06/23 → 2026/06/23
-  const parts = (rocStr||'').split('/');
-  if (parts.length === 3) {
-    const y = parseInt(parts[0]) + 1911;
-    return `${y}/${parts[1]}/${parts[2]}`;
-  }
-  return rocStr || '';
-}
+    allData = data.items || [];
+    // Populate keyword filter
+    const kwSelect = document.getElementById('filterKw');
+    const kwSet = [...new Set(allData.map(i => i.keyword))].sort();
+    kwSelect.innerHTML = '<option value="">全部關鍵字</option>' +
+      kwSet.map(k => `<option value="${k}">${k}</option>`).join('');
 
-// ══════════════════════════════════════════════════════
-// PCC 政府採購網 — 決標查詢
-// ══════════════════════════════════════════════════════
-async function fetchPCC(keyword, startDate, endDate) {
-  const params = new URLSearchParams({
-    pageSize: '',
-    firstSearch: 'false',
-    isQuery: '',
-    isBinding: 'N',
-    isLogIn: 'N',
-    orgName: '',
-    orgId: '',
-    tenderName: keyword,
-    tenderId: '',
-    tenderStatus: 'TENDER_STATUS_1',
-    tenderWay: 'TENDER_WAY_ALL_DECLARATION',
-    awardAnnounceStartDate: startDate,
-    awardAnnounceEndDate: endDate,
-    radProctrgCate: '',
-    tenderRange: 'TENDER_RANGE_ALL',
-    minBudget: '',
-    maxBudget: '',
-    item: '',
-    gottenVendorName: '',
-    gottenVendorId: '',
-    submitVendorName: '',
-    submitVendorId: '',
-    execLocation: '',
-    priorityCate: '',
-    radReConstruct: '',
-    policyAdvocacy: '',
-    isCpp: '',
-  });
-
-  const url = `${PCC_BASE}/prkms/tender/common/agent/readTenderAgent?${params}`;
-  log(`[PCC] 搜尋「${keyword}」…`, 'step');
-
-  const html = await backendFetch(url);
-  if (!html) throw new Error('PCC 回傳空白');
-
-  // 找總筆數
-  const totalMatch = html.match(/共有\s*([\d,]+)\s*筆/);
-  const total = totalMatch ? totalMatch[1] : '?';
-
-  const items = parsePCCTable(html, keyword);
-  log(`[PCC] 「${keyword}」→ 共 ${total} 筆，本頁 ${items.length} 筆`, items.length ? 'ok' : 'warn');
-  return items;
-}
-
-function parsePCCTable(html, keyword) {
-  // 找 id="atm" 表格
-  const atmIdx = html.indexOf('id="atm"');
-  if (atmIdx < 0) return [];
-
-  // 找表格開始和結束
-  const tblStart = html.lastIndexOf('<table', atmIdx);
-  const tblEnd   = html.indexOf('</table>', atmIdx) + '</table>'.length;
-  const tableHtml = html.slice(tblStart, tblEnd);
-
-  const items = [];
-  // 解析 <tr> 行
-  const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  let trMatch;
-  while ((trMatch = trRegex.exec(tableHtml)) !== null) {
-    const row = trMatch[1];
-    const cells = [];
-    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
-    let tdMatch;
-    while ((tdMatch = tdRegex.exec(row)) !== null) {
-      cells.push(tdMatch[1]);
+    document.getElementById('resultsCard').style.display = 'block';
+    document.getElementById('statusMsg').textContent = '';
+    applyFilter();
+  } catch(e) {
+    document.getElementById('statusMsg').textContent = `載入失敗：${e.message}`;
+    if (e.message.includes('404') || e.message.includes('Failed')) {
+      document.getElementById('statusMsg').textContent =
+        '尚無資料，請到 GitHub Actions 手動觸發爬蟲';
     }
-    if (cells.length < 7) continue;
-
-    // 第一格是序號
-    const seq = cells[0].replace(/<[^>]+>/g,'').trim();
-    if (!/^\d+$/.test(seq)) continue;
-
-    const agency    = cells[1].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
-    // 標案名稱從 title 屬性取
-    const titleMatch = cells[2].match(/title="([^"]+)"/);
-    const tenderName = titleMatch ? titleMatch[1] : cells[2].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim().split('\n')[0];
-    // 標案案號 (第一行文字)
-    const tenderId   = cells[2].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim().split(/\s/)[0];
-    const way        = cells[3].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
-    const category   = cells[4].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
-    const pubDate    = rocDateToDisplay(cells[5].replace(/<[^>]+>/g,'').trim());
-    const amount     = cells[6].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
-
-    // 決標公告連結
-    const linkMatch  = cells[7] ? cells[7].match(/href="(\/prkms\/urlSelector\/common\/atm\?pk=[^"]+)"/) : null;
-    const detailLink = linkMatch ? PCC_BASE + linkMatch[1] : '';
-
-    items.push({
-      src: 'PCC決標',
-      agency, tenderName, tenderId, way, category, pubDate, amount, detailLink, keyword
-    });
+  } finally {
+    document.getElementById('spinner').style.display = 'none';
   }
-  return items;
 }
 
-// ══════════════════════════════════════════════════════
-// 台灣採購公報網 — 招標公告關鍵字查詢
-// ══════════════════════════════════════════════════════
-async function fetchTaiwanBuying(keyword) {
-  log(`[公報網] 搜尋「${keyword}」…`, 'step');
-
-  const body = new URLSearchParams({ keyword }).toString();
-  const html = await backendFetch(`${TB_BASE}/Query_KeywordAction.ASP`, {
-    method: 'POST',
-    body,
-  });
-
-  if (!html) throw new Error('公報網回傳空白');
-
-  const items = parseTBResults(html, keyword);
-  log(`[公報網] 「${keyword}」→ ${items.length} 筆`, items.length ? 'ok' : 'warn');
-  return items;
-}
-
-function parseTBResults(html, keyword) {
-  const items = [];
-  // 實際 HTML 格式: <a rel='nofollow' href=javascript:openWin('ShowDetail.ASP?RecNo=4742792') title='原公告日期 : 115/6/11'>機關:名稱</a>
-  // 注意: href 無引號。先抓整個 <a> 開頭 tag + 文字，再從 tag 內提取 RecNo 和 title
-  const linkRegex = /(<a\b[^>]+ShowDetail\.ASP\?RecNo=(\d+)[^>]*>)([^<]+)<\/a>/gi;
-
-  let m;
-  while ((m = linkRegex.exec(html)) !== null) {
-    const fullTag = m[1];
-    const recNo   = m[2];
-    const titleM  = fullTag.match(/title='([^']+)'/);
-    const titleAttr = titleM ? titleM[1] : '';
-    const rawText = m[3].replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
-
-    // 移除末尾的更新日期 "(2026/6/23 更新)"
-    const cleanText = rawText.replace(/\s*\(\d{4}\/\d+\/\d+\s*更新\)\s*$/, '').trim();
-
-    // 格式通常是「機關名稱:標案名稱」
-    const colonIdx = cleanText.indexOf(':');
-    let agency = '', tenderName = '';
-    if (colonIdx > 0) {
-      agency = cleanText.slice(0, colonIdx).trim();
-      tenderName = cleanText.slice(colonIdx+1).trim();
-    } else {
-      tenderName = cleanText;
-    }
-
-    // 從 title 取公告日期 (格式: 原公告日期 : 115/6/11 → 轉西元)
-    let pubDate = '';
-    const dateM = titleAttr.match(/(\d{2,3})\/(\d{1,2})\/(\d{1,2})/);
-    if (dateM) {
-      const y = parseInt(dateM[1]) + 1911;
-      const mo = String(dateM[2]).padStart(2,'0');
-      const d  = String(dateM[3]).padStart(2,'0');
-      pubDate = `${y}/${mo}/${d}`;
-    }
-
-    const detailLink = `${TB_BASE}/ShowDetail.ASP?RecNo=${recNo}`;
-    items.push({
-      src: '公報網招標',
-      agency, tenderName,
-      tenderId: '', way: '', category: '', pubDate, amount: '',
-      detailLink, keyword
-    });
-  }
-  return items;
-}
-
-// ══════════════════════════════════════════════════════
-// 去重
-// ══════════════════════════════════════════════════════
-function dedup(allItems) {
-  const seen = new Set();
-  return allItems.filter(item => {
-    const key = `${item.src}|${item.tenderId || item.detailLink}|${item.tenderName.slice(0,10)}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
+function applyFilter() {
+  const text = document.getElementById('filterText').value.toLowerCase();
+  const src  = document.getElementById('filterSrc').value;
+  const kw   = document.getElementById('filterKw').value;
+  filtered = allData.filter(item => {
+    if (src && item.src !== src) return false;
+    if (kw  && item.keyword !== kw) return false;
+    if (text && !Object.values(item).some(v => (v||'').toLowerCase().includes(text))) return false;
     return true;
   });
+  document.getElementById('resultCount').textContent = `${filtered.length} 筆`;
+  renderTable();
 }
 
-// ══════════════════════════════════════════════════════
-// 主流程
-// ══════════════════════════════════════════════════════
-async function startScraping() {
-  if (isRunning) return;
-
-  const keywordsRaw = document.getElementById('keywords').value;
-  const keywords = keywordsRaw.split(',').map(k=>k.trim()).filter(Boolean);
-  if (!keywords.length) { alert('請輸入至少一個關鍵字'); return; }
-
-  const usePCC = document.getElementById('srcPCC').checked;
-  const useTB  = document.getElementById('srcTB').checked;
-  if (!usePCC && !useTB) { alert('請至少勾選一個查詢來源'); return; }
-
-  // 計算日期範圍
-  const lookback = parseInt(document.getElementById('lookbackDays').value) || 90;
-  const endDt = new Date();
-  const startDt = new Date(endDt);
-  startDt.setDate(startDt.getDate() - lookback);
-  const startDate = dateToGregorian(startDt);
-  const endDate   = dateToGregorian(endDt);
-
-  isRunning = true; shouldStop = false; results = [];
-  document.getElementById('log').innerHTML = '';
-  document.getElementById('log').style.display = 'none';
-  document.getElementById('resultsCard').style.display = 'none';
-  document.getElementById('startBtn').disabled = true;
-  document.getElementById('stopBtn').style.display = 'inline-flex';
-  document.getElementById('spinner').style.display = 'inline-block';
-  setProgress(2);
-  log(`查詢關鍵字：${keywords.join('、')}，日期：${startDate} ～ ${endDate}`, 'info');
-
-  const allItems = [];
-  const total = keywords.length * ((usePCC?1:0) + (useTB?1:0));
-  let done = 0;
-
-  for (const kw of keywords) {
-    if (shouldStop) break;
-
-    if (usePCC) {
-      try {
-        setStatus(`PCC 查詢「${kw}」…`);
-        const items = await fetchPCC(kw, startDate, endDate);
-        allItems.push(...items);
-      } catch(e) {
-        log(`[PCC] 「${kw}」錯誤：${e.message}`, 'err');
-      }
-      done++;
-      setProgress(2 + 95 * done / total);
-      await delay(500, 1000);
-    }
-
-    if (shouldStop) break;
-
-    if (useTB) {
-      try {
-        setStatus(`公報網查詢「${kw}」…`);
-        const items = await fetchTaiwanBuying(kw);
-        allItems.push(...items);
-      } catch(e) {
-        log(`[公報網] 「${kw}」錯誤：${e.message}`, 'err');
-      }
-      done++;
-      setProgress(2 + 95 * done / total);
-      await delay(600, 1200);
-    }
-  }
-
-  results = dedup(allItems);
-  setProgress(100);
-
-  if (shouldStop) {
-    log(`⏹ 已停止，共 ${results.length} 筆`, 'warn');
-    setStatus(`已停止，共 ${results.length} 筆`);
-  } else {
-    log(`✅ 完成！共 ${results.length} 筆（PCC + 公報網）`, 'ok');
-    setStatus(`完成，共 ${results.length} 筆`);
-  }
-  renderResults();
-  isRunning = false;
-  document.getElementById('startBtn').disabled = false;
-  document.getElementById('stopBtn').style.display = 'none';
-  document.getElementById('spinner').style.display = 'none';
+function sortBy(colIdx) {
+  if (sortCol === colIdx) sortDir *= -1;
+  else { sortCol = colIdx; sortDir = 1; }
+  renderTable();
 }
 
-function stopScraping() {
-  shouldStop = true;
-  log('使用者停止查詢…', 'warn');
-}
-
-// ══════════════════════════════════════════════════════
-// 匯出
-// ══════════════════════════════════════════════════════
-const COLS = ['來源','機關名稱','標案名稱','案號','招標方式','公告/決標日期','決標金額','搜尋關鍵字','詳細連結'];
-function rowArr(r) {
-  return [r.src, r.agency, r.tenderName, r.tenderId, r.way, r.pubDate, r.amount, r.keyword, r.detailLink];
-}
-
-function downloadCSV() {
-  const lines = [COLS.join(','), ...results.map(r => rowArr(r).map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(','))];
-  const a = Object.assign(document.createElement('a'), {
-    href: URL.createObjectURL(new Blob(['\uFEFF'+lines.join('\n')], {type:'text/csv;charset=utf-8'})),
-    download: `採購標案彙整_${new Date().toISOString().slice(0,10)}.csv`
-  });
-  a.click();
-}
-
-function copyForSheets() {
-  const tsv = [COLS.join('\t'), ...results.map(r=>rowArr(r).map(v=>v||'').join('\t'))].join('\n');
-  navigator.clipboard.writeText(tsv)
-    .then(() => alert('✅ 已複製！\n到 Google Sheets 選 A1 後 Ctrl+V（Mac: ⌘V）貼上。'))
-    .catch(() => {
-      // fallback
-      const ta = document.createElement('textarea');
-      ta.value = tsv;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      alert('✅ 已複製！');
+function renderTable() {
+  // Sort
+  const sorted = [...filtered];
+  if (sortCol >= 0) {
+    sorted.sort((a,b) => {
+      const av = (rowArr(a)[sortCol] || '').toString();
+      const bv = (rowArr(b)[sortCol] || '').toString();
+      return av.localeCompare(bv, 'zh-TW') * sortDir;
     });
-}
+  }
 
-function renderResults() {
-  document.getElementById('resultsCard').style.display = 'block';
-  document.getElementById('resultCount').textContent = `${results.length} 筆`;
   const c = document.getElementById('resultsTable');
-  if (!results.length) {
+  if (!sorted.length) {
     c.innerHTML = '<div class="empty-state">📭 沒有找到符合條件的標案</div>';
     return;
   }
   const t = document.createElement('table');
   const hr = t.createTHead().insertRow();
-  COLS.forEach(h => { const th=document.createElement('th'); th.textContent=h; hr.appendChild(th); });
+  COLS.forEach((h,i) => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    if (i < COLS.length-1) {
+      th.onclick = () => sortBy(i);
+      if (sortCol === i) th.className = sortDir > 0 ? 'sort-asc' : 'sort-desc';
+    }
+    hr.appendChild(th);
+  });
+
   const tb = t.createTBody();
-  results.forEach(r => {
+  sorted.forEach(r => {
     const tr = tb.insertRow();
     rowArr(r).forEach((v,i) => {
       const td = tr.insertCell();
       if (i === COLS.length-1 && v) {
-        // 詳細連結
         const a = document.createElement('a');
         a.href = v; a.target = '_blank'; a.textContent = '查看'; a.className = 'row-link';
         td.appendChild(a);
       } else if (i === 0) {
-        // 來源標籤
         const span = document.createElement('span');
         span.className = 'tag' + (v.includes('公報') ? ' tag-tb' : '');
-        span.textContent = v;
+        span.textContent = v || '—';
         td.appendChild(span);
       } else {
         td.textContent = v || '—';
@@ -544,6 +231,37 @@ function renderResults() {
   c.innerHTML = '';
   c.appendChild(t);
 }
+
+// ── Export ──────────────────────────────────────────────
+function downloadCSV() {
+  const data = filtered.length ? filtered : allData;
+  if (!data.length) { alert('沒有資料可下載'); return; }
+  const lines = [COLS.join(','), ...data.map(r =>
+    rowArr(r).map(v => `"${(v||'').replace(/"/g,'""')}"`).join(',')
+  )];
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob(['\uFEFF'+lines.join('\n')], {type:'text/csv;charset=utf-8'})),
+    download: `採購標案_${new Date().toISOString().slice(0,10)}.csv`
+  });
+  a.click();
+}
+
+function copyForSheets() {
+  const data = filtered.length ? filtered : allData;
+  if (!data.length) { alert('沒有資料可複製'); return; }
+  const tsv = [COLS.join('\t'), ...data.map(r => rowArr(r).map(v => v||'').join('\t'))].join('\n');
+  navigator.clipboard.writeText(tsv)
+    .then(() => alert('✅ 已複製！\n到 Google Sheets 選 A1 後 Ctrl+V（Mac: ⌘V）貼上。'))
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = tsv; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      alert('✅ 已複製！');
+    });
+}
+
+// Auto-load on page open
+loadData();
 </script>
 </body>
 </html>
