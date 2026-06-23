@@ -117,14 +117,22 @@ async def stage1_get_agency(page, start_url: str) -> str:
             pass
 
     content = await page.content()
-    # Debug: print page URL and snippet to diagnose rendering
+    # Debug: print page URL and content to diagnose rendering
     print(f"[Stage 1] 當前URL：{page.url}")
     print(f"[Stage 1] 頁面大小：{len(content)} bytes")
     idx = content.find("機關名稱")
     if idx >= 0:
         print(f"[Stage 1] 機關名稱@{idx}: {repr(content[max(0,idx-30):idx+200])}")
     else:
-        print(f"[Stage 1] 頁面中無「機關名稱」，前1000字：{content[:1000]}")
+        # Print plain text to see what labels are present
+        plain = re.sub(r'<[^>]+>', ' ', content)
+        plain = re.sub(r'\s+', ' ', plain).strip()
+        print(f"[Stage 1] 頁面純文字(前2000): {plain[:2000]}")
+        # Also find any XHR/fetch endpoints in JS
+        for js_pat in [r"'(/[^']{5,80})'", r'"(/[^"]{5,80})"']:
+            for ep in re.findall(js_pat, content)[:20]:
+                if any(k in ep for k in ['tender', 'bulletin', 'query', 'get', 'json']):
+                    print(f"[Stage 1] JS端點: {ep}")
 
     for pat in [
         r"機關名稱[：:]\s*</[^>]+>\s*<[^>]+>\s*([^<\s]{2,30})",
