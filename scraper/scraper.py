@@ -349,11 +349,13 @@ async def _fetch_case_detail(page, detail_url: str) -> dict | None:
     tender_id = find(["採購案號", "案號", "標案案號"])
     tender_name = find(["採購名稱", "標案名稱", "案件名稱"])
 
-    # If no date found, look for any date pattern in the page
+    # If no date found, look for a plausible ROC date (year 100-130 = 2011-2041)
     if not publish_date_raw:
-        date_m = re.search(r"(\d{3})[/\-](\d{1,2})[/\-](\d{1,2})", content)
-        if date_m:
-            publish_date_raw = f"{date_m.group(1)}/{int(date_m.group(2)):02d}/{int(date_m.group(3)):02d}"
+        for date_m in re.finditer(r"(\d{3})[/\-](\d{1,2})[/\-](\d{1,2})", content):
+            y, mo, d = int(date_m.group(1)), int(date_m.group(2)), int(date_m.group(3))
+            if 100 <= y <= 130 and 1 <= mo <= 12 and 1 <= d <= 31:
+                publish_date_raw = f"{y}/{mo:02d}/{d:02d}"
+                break
 
     if not tender_id and not tender_name:
         return None
@@ -378,9 +380,12 @@ async def stage45_query_pcc(page, case: dict) -> dict | None:
 
     # PCC date fields use ROC format; max range 185 days (limit is 186)
     max_days = min(LOOKBACK_DAYS, 92)
-    start_date_roc = gregorian_to_roc(gregorian_shift(pub_date, -max_days))
-    end_date_roc   = gregorian_to_roc(gregorian_shift(pub_date,  max_days))
-    print(f"  [4] {tender_id}  {start_date_roc}～{end_date_roc}")
+    print(f"  [4] pub_date_raw={case.get('publish_date_raw')!r} pub_date={pub_date!r}")
+    start_greg = gregorian_shift(pub_date, -max_days)
+    end_greg   = gregorian_shift(pub_date,  max_days)
+    start_date_roc = gregorian_to_roc(start_greg)
+    end_date_roc   = gregorian_to_roc(end_greg)
+    print(f"  [4] {tender_id}  greg={start_greg}～{end_greg}  roc={start_date_roc}～{end_date_roc}")
 
     await page.goto(PCC_SEARCH_URL, wait_until="domcontentloaded", timeout=30000)
     try:
