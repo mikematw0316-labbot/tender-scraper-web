@@ -152,33 +152,55 @@ function updateBtn() {
   document.getElementById('analyzeBtn').disabled = !url;
 }
 
-// ── 觸發：複製網址並開啟 GitHub Actions 頁面 ────────────
-function openActions() {
+// ── 觸發：呼叫本地 trigger server（cloudflared tunnel） ─
+let apiUrl = null;
+async function getApiUrl() {
+  if (apiUrl) return apiUrl;
+  try {
+    const r = await fetch('data/api_url.json?t=' + Date.now());
+    const d = await r.json();
+    apiUrl = d.api_url;
+    return apiUrl;
+  } catch(e) {
+    return null;
+  }
+}
+
+async function openActions() {
   const startUrl = document.getElementById('startUrl').value.trim();
   if (!startUrl) return;
 
-  // 複製網址到剪貼簿
-  navigator.clipboard.writeText(startUrl).catch(() => {
-    const ta = document.createElement('textarea');
-    ta.value = startUrl; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-  });
-
-  // 顯示說明
   const box = document.getElementById('triggerStatus');
-  box.className = 'status-box success';
+  box.className = 'status-box';
   box.style.display = 'block';
-  box.innerHTML = `
-    ✅ 網址已複製到剪貼簿！<br><br>
-    <strong>接下來 3 步驟：</strong><br>
-    1️⃣ 在打開的 GitHub 頁面，點右側 <strong>「Run workflow」</strong> 按鈕<br>
-    2️⃣ 在「政府採購網起始網址」欄位，按 <strong>Ctrl+V（或 ⌘V）貼上</strong><br>
-    3️⃣ 點綠色 <strong>「Run workflow」</strong> 確認執行<br><br>
-    約 10～20 分鐘後，回本頁點「🔄 重新整理」看結果。
-  `;
+  box.textContent = '⏳ 觸發中…';
+  document.getElementById('analyzeBtn').disabled = true;
 
-  // 開啟 GitHub Actions 頁面
-  window.open(ACTIONS_URL, '_blank');
+  try {
+    const endpoint = await getApiUrl();
+    if (!endpoint) throw new Error('無法取得伺服器位址，請稍後再試');
+
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start_url: startUrl }),
+    });
+    const data = await resp.json();
+
+    if (data.ok) {
+      box.className = 'status-box success';
+      box.innerHTML = `✅ 已成功觸發！雲端爬蟲執行中（約 15 分鐘）。<br>
+        完成後點上方「🔄 重新整理」即可看到結果。<br>
+        <a href="${ACTIONS_URL}" target="_blank" style="font-size:12px">查看執行進度</a>`;
+    } else {
+      throw new Error(data.error || '觸發失敗');
+    }
+  } catch(e) {
+    box.className = 'status-box error';
+    box.textContent = `❌ ${e.message}`;
+  } finally {
+    document.getElementById('analyzeBtn').disabled = false;
+  }
 }
 
 // ── 載入結果 ───────────────────────────────────────────
