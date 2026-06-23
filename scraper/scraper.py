@@ -310,7 +310,17 @@ async def _fetch_case_detail(page, detail_url: str) -> dict | None:
     if _detail_debug_count < 1:
         _detail_debug_count += 1
         print(f"    [detail-debug] URL={detail_url} size={len(content)}")
-        print(f"    [detail-debug] content={content[:800]}")
+        # Print snippet around key fields
+        for kw in ["公布日期", "採購案號", "採購名稱", "標案名稱"]:
+            idx = content.find(kw)
+            if idx >= 0:
+                print(f"    [detail-debug] {kw} @{idx}: {repr(content[max(0,idx-20):idx+120])}")
+            else:
+                print(f"    [detail-debug] {kw}: NOT FOUND")
+        # Print plain text of page
+        plain = re.sub(r'<[^>]+>', ' ', content)
+        plain = re.sub(r'\s+', ' ', plain).strip()
+        print(f"    [detail-debug] text={plain[:600]}")
 
     def find(labels):
         for label in labels:
