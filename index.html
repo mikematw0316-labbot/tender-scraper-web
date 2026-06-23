@@ -7,7 +7,7 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Microsoft JhengHei', '微軟正黑體', sans-serif; background: #f0f4f8; color: #2d3748; min-height: 100vh; }
-.container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+.container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
 header { background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%); color: white; padding: 20px 24px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px; }
 header .icon { font-size: 36px; }
 header h1 { font-size: 22px; font-weight: 700; }
@@ -15,13 +15,14 @@ header p { font-size: 13px; opacity: 0.8; margin-top: 2px; }
 .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .card h2 { font-size: 15px; font-weight: 700; color: #1a365d; margin-bottom: 14px; }
 label { display: block; font-size: 13px; font-weight: 600; color: #4a5568; margin-bottom: 5px; }
-input[type="url"], input[type="text"] {
+input[type="date"], input[type="text"] {
   width: 100%; padding: 9px 12px; border: 1.5px solid #e2e8f0; border-radius: 7px;
   font-size: 14px; margin-bottom: 14px; transition: border-color 0.2s; font-family: inherit;
 }
 input:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 3px rgba(43,108,176,0.1); }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 700px) { .row,.row3 { grid-template-columns: 1fr; } }
 .btn { padding: 10px 18px; border: none; border-radius: 7px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
 .btn-primary { background: #2b6cb0; color: white; }
 .btn-primary:hover:not(:disabled) { background: #2c5282; }
@@ -36,7 +37,7 @@ input:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 3px rgba(4
 #status-text { font-size: 13px; color: #4a5568; font-weight: 500; }
 .progress-wrap { background: #e2e8f0; border-radius: 4px; height: 5px; margin-top: 10px; display: none; }
 .progress-bar { background: linear-gradient(90deg, #2b6cb0, #4299e1); height: 100%; border-radius: 4px; transition: width 0.4s ease; }
-.log-wrap { background: #1a202c; border-radius: 8px; padding: 14px 16px; max-height: 280px; overflow-y: auto; display: none; font-family: 'Courier New', monospace; font-size: 12.5px; margin-bottom: 16px; }
+.log-wrap { background: #1a202c; border-radius: 8px; padding: 14px 16px; max-height: 240px; overflow-y: auto; display: none; font-family: 'Courier New', monospace; font-size: 12.5px; margin-bottom: 16px; }
 .log-wrap .e { padding: 1.5px 0; line-height: 1.6; }
 .log-wrap .step { color: #63b3ed; }
 .log-wrap .ok   { color: #68d391; }
@@ -44,15 +45,20 @@ input:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 3px rgba(4
 .log-wrap .err  { color: #fc8181; }
 .log-wrap .info { color: #a0aec0; }
 .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #ebf8ff; color: #2b6cb0; }
+.tag-tb { background: #fef3c7; color: #92400e; }
 .actions { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 .table-wrap { overflow-x: auto; border-radius: 7px; border: 1px solid #e2e8f0; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
 thead tr { background: #1a365d; color: white; }
 th { padding: 10px; text-align: left; font-weight: 600; white-space: nowrap; }
-td { padding: 8px 10px; border-bottom: 1px solid #edf2f7; vertical-align: top; }
+td { padding: 8px 10px; border-bottom: 1px solid #edf2f7; vertical-align: top; word-break: break-all; }
+td.nowrap { white-space: nowrap; }
 tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: #f7fafc; }
 .empty-state { text-align: center; padding: 48px; color: #a0aec0; }
+.hint { font-size: 12px; color: #718096; margin-top: -10px; margin-bottom: 14px; }
+a.row-link { color: #2b6cb0; text-decoration: none; }
+a.row-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -62,26 +68,35 @@ tbody tr:hover td { background: #f7fafc; }
     <div class="icon">🏛️</div>
     <div>
       <h1>政府採購標案彙整工具</h1>
-      <p>自動爬取政府電子採購網 ＋ 台灣採購公報網，彙整決標資訊</p>
+      <p>自動爬取政府電子採購網（決標公告）＋ 台灣採購公報網（招標公告），彙整相關標案</p>
     </div>
   </header>
 
   <div class="card">
     <h2>⚙️ 查詢設定</h2>
-    <label for="startUrl">政府採購網網址（含機關資訊的頁面）</label>
-    <input type="url" id="startUrl" placeholder="https://web.pcc.gov.tw/tps/QueryTender/query/..." />
     <div class="row">
       <div>
         <label for="keywords">篩選關鍵字（逗號分隔）</label>
         <input type="text" id="keywords" value="設計,監造,耐震,補強,技術" />
       </div>
       <div>
-        <label for="lookbackDays">決標查詢回溯天數</label>
-        <input type="text" id="lookbackDays" value="180" />
+        <label for="lookbackDays">回溯天數（決標查詢日期範圍）</label>
+        <input type="text" id="lookbackDays" value="90" />
+        <div class="hint">例：90 代表從今天往前90天</div>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>查詢來源</label>
+        <div style="display:flex;gap:16px;padding:6px 0 14px">
+          <label style="display:flex;gap:6px;align-items:center;font-weight:400"><input type="checkbox" id="srcPCC" checked> 政府採購網（決標公告）</label>
+          <label style="display:flex;gap:6px;align-items:center;font-weight:400"><input type="checkbox" id="srcTB" checked> 台灣採購公報網（招標公告）</label>
+        </div>
       </div>
     </div>
     <div class="status-row">
-      <button class="btn btn-primary" id="startBtn" onclick="startScraping()">🔍 開始爬取</button>
+      <button class="btn btn-primary" id="startBtn" onclick="startScraping()">🔍 開始查詢</button>
+      <button class="btn" id="stopBtn" onclick="stopScraping()" style="background:#e53e3e;color:white;display:none">⏹ 停止</button>
       <div class="spinner" id="spinner"></div>
       <span id="status-text"></span>
     </div>
@@ -96,28 +111,27 @@ tbody tr:hover td { background: #f7fafc; }
     <h2>📊 查詢結果 <span class="tag" id="resultCount">0 筆</span></h2>
     <div class="actions">
       <button class="btn btn-success" onclick="downloadCSV()">⬇ 下載 CSV</button>
-      <button class="btn btn-info" onclick="copyForSheets()">📋 複製貼到 Google Sheets</button>
+      <button class="btn btn-info" onclick="copyForSheets()">📋 複製到 Google Sheets</button>
     </div>
     <div class="table-wrap"><div id="resultsTable"></div></div>
   </div>
 
 </div>
 <script>
-// ═══════════════════════════════════════════════════════
-// 設定：自動偵測是否在 Vercel 還是 GitHub Pages
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// 設定
+// ══════════════════════════════════════════════════════
 const API_BASE = window.location.hostname.includes('github.io')
-  ? 'https://tender-scraper.vercel.app'   // GitHub Pages → 指向 Vercel 後端
-  : '';                                    // Vercel 部署 → 同源
+  ? 'https://tender-scraper.vercel.app'
+  : '';
 
-const TAIWANBUYING = 'https://www.taiwanbuying.com.tw';
-const PCC_SEARCH   = 'https://web.pcc.gov.tw/prkms/tender/common/agent/indexTenderAgent';
+const PCC_BASE = 'https://web.pcc.gov.tw';
+const TB_BASE  = 'https://www.taiwanbuying.com.tw';
 
-let results = [], agencyNameGlobal = '', isRunning = false;
+let results = [], isRunning = false, shouldStop = false;
+const cookieStore = {};
 
 // ── 後端代理請求 ──────────────────────────────────────
-const cookieStore = {};  // domain → cookie string
-
 async function backendFetch(url, opts = {}) {
   const domain = new URL(url).hostname;
   const payload = {
@@ -127,33 +141,35 @@ async function backendFetch(url, opts = {}) {
     headers: opts.headers || {},
     cookies: cookieStore[domain] || '',
   };
-
   const resp = await fetch(API_BASE + '/api/proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({ error: resp.statusText }));
     throw new Error(err.error || `proxy 錯誤 ${resp.status}`);
   }
-
   const data = await resp.json();
-  if (!data.ok && data.status >= 400) throw new Error(`目標網站回傳 ${data.status}`);
-
   // 保存 Cookie
   if (data.setCookie) {
     data.setCookie.split(/,(?=[^;]+=)/).forEach(part => {
       const m = part.trim().match(/^([^=;]+)=([^;]*)/);
-      if (m) cookieStore[domain] = (cookieStore[domain] ? cookieStore[domain] + '; ' : '') + `${m[1].trim()}=${m[2].trim()}`;
+      if (m) {
+        const existing = cookieStore[domain] || '';
+        const name = m[1].trim();
+        // 更新或新增 cookie
+        const parts = existing.split('; ').filter(p => !p.startsWith(name + '='));
+        parts.push(`${name}=${m[2].trim()}`);
+        cookieStore[domain] = parts.join('; ');
+      }
     });
   }
-  return data.html;
+  return data.html || '';
 }
 
 const dom = html => new DOMParser().parseFromString(html, 'text/html');
-const delay = (lo=800,hi=2000) => new Promise(r=>setTimeout(r,lo+Math.random()*(hi-lo)));
+const delay = (lo=600,hi=1500) => new Promise(r=>setTimeout(r, lo + Math.random()*(hi-lo)));
 
 // ── UI 工具 ───────────────────────────────────────────
 function log(msg, type='info') {
@@ -161,7 +177,7 @@ function log(msg, type='info') {
   el.style.display = 'block';
   const d = document.createElement('div');
   d.className = 'e ' + type;
-  d.textContent = `${new Date().toLocaleTimeString()} ${msg}`;
+  d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
   el.appendChild(d);
   el.scrollTop = el.scrollHeight;
 }
@@ -171,236 +187,307 @@ function setProgress(p) {
   document.getElementById('progressBar').style.width = Math.min(p,100)+'%';
 }
 
-// ═══════════════════════════════════════════════════════
-// 階段一：從採購網頁面取得機關名稱
-// ═══════════════════════════════════════════════════════
-async function getAgencyName(url) {
-  log('[1] 取得機關名稱…', 'step');
-  const html = await backendFetch(url);
-  const doc  = dom(html);
-
-  // 策略 A：掃 <tr>，找「機關名稱」cell，取同列下一格
-  for (const row of doc.querySelectorAll('tr')) {
-    const cells = Array.from(row.querySelectorAll('td, th'));
-    for (let i = 0; i < cells.length; i++) {
-      const t = cells[i].textContent.replace(/\s+/g,'').trim();
-      if (t === '機關名稱' || t === '機關名稱：') {
-        for (let j = i+1; j < cells.length; j++) {
-          const v = cells[j].textContent.replace(/\s+/g,' ').trim();
-          if (v && v.length < 50 && v !== '機關名稱') return v;
-        }
-      }
-    }
+// ── 日期工具 ──────────────────────────────────────────
+function dateToGregorian(dt) {
+  // 回傳 YYYY/MM/DD 格式（西元年，PCC 決標查詢用）
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth()+1).padStart(2,'0');
+  const d = String(dt.getDate()).padStart(2,'0');
+  return `${y}/${m}/${d}`;
+}
+function rocDateToDisplay(rocStr) {
+  // 115/06/23 → 2026/06/23
+  const parts = (rocStr||'').split('/');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0]) + 1911;
+    return `${y}/${parts[1]}/${parts[2]}`;
   }
-  // 策略 B：nextElementSibling
-  for (const cell of doc.querySelectorAll('th, td')) {
-    if (cell.textContent.trim() === '機關名稱') {
-      const s = cell.nextElementSibling;
-      if (s) { const v = s.textContent.trim(); if (v && v.length < 50) return v; }
-    }
-  }
-  // 策略 C：regex
-  const pats = [
-    /機關名稱[：:]{0,2}<\/t[dh]>\s*<t[dh][^>]*>\s*([^<\s]{2,40})/,
-    /機關名稱[^<]{0,8}>\s*([^<\s]{2,40})</,
-    /機關名稱[：:\s]{0,4}([^\s<&\n\r]{2,40})/,
-  ];
-  for (const p of pats) {
-    const m = html.match(p);
-    if (m) { const v=m[1].replace(/&amp;/g,'&').trim(); if(v.length<50) return v; }
-  }
-  throw new Error('找不到機關名稱欄位，請確認網址正確');
+  return rocStr || '';
 }
 
-// ═══════════════════════════════════════════════════════
-// 階段二～三：台灣採購公報網
-// ═══════════════════════════════════════════════════════
-async function fetchMatchingCases(agency) {
-  const keywords = document.getElementById('keywords').value.split(',').map(k=>k.trim()).filter(Boolean);
-
-  log(`[2] 搜尋公報網：${agency}`, 'step');
-  const body = new URLSearchParams({ sUnit: agency, Submit: '查詢' }).toString();
-  const html1 = await backendFetch(TAIWANBUYING + '/QueryCloseCase_Ori.ASP', {
-    method: 'POST', body,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+// ══════════════════════════════════════════════════════
+// PCC 政府採購網 — 決標查詢
+// ══════════════════════════════════════════════════════
+async function fetchPCC(keyword, startDate, endDate) {
+  const params = new URLSearchParams({
+    pageSize: '',
+    firstSearch: 'false',
+    isQuery: '',
+    isBinding: 'N',
+    isLogIn: 'N',
+    orgName: '',
+    orgId: '',
+    tenderName: keyword,
+    tenderId: '',
+    tenderStatus: 'TENDER_STATUS_1',
+    tenderWay: 'TENDER_WAY_ALL_DECLARATION',
+    awardAnnounceStartDate: startDate,
+    awardAnnounceEndDate: endDate,
+    radProctrgCate: '',
+    tenderRange: 'TENDER_RANGE_ALL',
+    minBudget: '',
+    maxBudget: '',
+    item: '',
+    gottenVendorName: '',
+    gottenVendorId: '',
+    submitVendorName: '',
+    submitVendorId: '',
+    execLocation: '',
+    priorityCate: '',
+    radReConstruct: '',
+    policyAdvocacy: '',
+    isCpp: '',
   });
-  await delay();
 
-  const doc1 = dom(html1);
-  const links1 = Array.from(doc1.querySelectorAll('a[href]'))
-    .filter(a => { const h=a.getAttribute('href')||''; return h && !h.startsWith('javascript') && a.textContent.trim().length>1; });
+  const url = `${PCC_BASE}/prkms/tender/common/agent/readTenderAgent?${params}`;
+  log(`[PCC] 搜尋「${keyword}」…`, 'step');
 
-  if (!links1.length) throw new Error(`公報網找不到「${agency}」`);
-
-  const rawHref = links1[0].getAttribute('href');
-  const firstUrl = rawHref.startsWith('http') ? rawHref : TAIWANBUYING+'/'+rawHref.replace(/^\//,'');
-  log(`  → ${links1[0].textContent.trim()}`, 'ok');
-
-  const html2 = await backendFetch(firstUrl);
-  await delay();
-  const doc2 = dom(html2);
-  const yearLinks = Array.from(doc2.querySelectorAll('a[href]'))
-    .filter(a => /^\d{3,4}$/.test(a.textContent.trim()))
-    .sort((a,b) => parseInt(b.textContent)-parseInt(a.textContent));
-
-  if (!yearLinks.length) throw new Error('找不到年份連結');
-  const yr = yearLinks[0].textContent.trim();
-  log(`[2] 最新年份：${yr}`, 'step');
-
-  const yh = yearLinks[0].getAttribute('href');
-  const yearUrl = yh.startsWith('http') ? yh : TAIWANBUYING+'/'+yh.replace(/^\//,'');
-  const html3 = await backendFetch(yearUrl);
-  await delay();
-  const doc3 = dom(html3);
-
-  log('[3] 掃描案件…', 'step');
-  const matched = [];
-  for (const row of doc3.querySelectorAll('table tr')) {
-    if (!keywords.some(kw => row.textContent.includes(kw))) continue;
-    const link = row.querySelector('a[href]');
-    if (!link) continue;
-    const caseName = link.textContent.trim();
-    log(`  ✓ ${caseName}`, 'ok');
-    const dh = link.getAttribute('href');
-    const detUrl = dh.startsWith('http') ? dh : TAIWANBUYING+'/'+dh.replace(/^\//,'');
-    try {
-      const detail = await fetchCaseDetail(detUrl, caseName);
-      if (detail) matched.push(detail);
-    } catch(e) { log(`  ⚠ 明細失敗：${e.message}`, 'warn'); }
-    await delay(1200, 2800);
-  }
-  log(`[3] 篩出 ${matched.length} 筆`, 'step');
-  return matched;
-}
-
-async function fetchCaseDetail(url, fallbackName) {
   const html = await backendFetch(url);
-  const doc  = dom(html);
+  if (!html) throw new Error('PCC 回傳空白');
 
-  function field(...labels) {
-    for (const row of doc.querySelectorAll('tr')) {
-      const cells = Array.from(row.querySelectorAll('td,th'));
-      for (let i=0; i<cells.length; i++) {
-        const t = cells[i].textContent.replace(/\s+/g,'').trim();
-        if (labels.some(l => t===l || t===l+'：')) {
-          for (let j=i+1; j<cells.length; j++) {
-            const v = cells[j].textContent.replace(/\s+/g,' ').trim();
-            if (v && v!==t) return v;
-          }
-        }
+  // 找總筆數
+  const totalMatch = html.match(/共有\s*([\d,]+)\s*筆/);
+  const total = totalMatch ? totalMatch[1] : '?';
+
+  const items = parsePCCTable(html, keyword);
+  log(`[PCC] 「${keyword}」→ 共 ${total} 筆，本頁 ${items.length} 筆`, items.length ? 'ok' : 'warn');
+  return items;
+}
+
+function parsePCCTable(html, keyword) {
+  // 找 id="atm" 表格
+  const atmIdx = html.indexOf('id="atm"');
+  if (atmIdx < 0) return [];
+
+  // 找表格開始和結束
+  const tblStart = html.lastIndexOf('<table', atmIdx);
+  const tblEnd   = html.indexOf('</table>', atmIdx) + '</table>'.length;
+  const tableHtml = html.slice(tblStart, tblEnd);
+
+  const items = [];
+  // 解析 <tr> 行
+  const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let trMatch;
+  while ((trMatch = trRegex.exec(tableHtml)) !== null) {
+    const row = trMatch[1];
+    const cells = [];
+    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    let tdMatch;
+    while ((tdMatch = tdRegex.exec(row)) !== null) {
+      cells.push(tdMatch[1]);
+    }
+    if (cells.length < 7) continue;
+
+    // 第一格是序號
+    const seq = cells[0].replace(/<[^>]+>/g,'').trim();
+    if (!/^\d+$/.test(seq)) continue;
+
+    const agency    = cells[1].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+    // 標案名稱從 title 屬性取
+    const titleMatch = cells[2].match(/title="([^"]+)"/);
+    const tenderName = titleMatch ? titleMatch[1] : cells[2].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim().split('\n')[0];
+    // 標案案號 (第一行文字)
+    const tenderId   = cells[2].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim().split(/\s/)[0];
+    const way        = cells[3].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+    const category   = cells[4].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+    const pubDate    = rocDateToDisplay(cells[5].replace(/<[^>]+>/g,'').trim());
+    const amount     = cells[6].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+
+    // 決標公告連結
+    const linkMatch  = cells[7] ? cells[7].match(/href="(\/prkms\/urlSelector\/common\/atm\?pk=[^"]+)"/) : null;
+    const detailLink = linkMatch ? PCC_BASE + linkMatch[1] : '';
+
+    items.push({
+      src: 'PCC決標',
+      agency, tenderName, tenderId, way, category, pubDate, amount, detailLink, keyword
+    });
+  }
+  return items;
+}
+
+// ══════════════════════════════════════════════════════
+// 台灣採購公報網 — 招標公告關鍵字查詢
+// ══════════════════════════════════════════════════════
+async function fetchTaiwanBuying(keyword) {
+  log(`[公報網] 搜尋「${keyword}」…`, 'step');
+
+  const body = new URLSearchParams({ keyword }).toString();
+  const html = await backendFetch(`${TB_BASE}/Query_KeywordAction.ASP`, {
+    method: 'POST',
+    body,
+  });
+
+  if (!html) throw new Error('公報網回傳空白');
+
+  const items = parseTBResults(html, keyword);
+  log(`[公報網] 「${keyword}」→ ${items.length} 筆`, items.length ? 'ok' : 'warn');
+  return items;
+}
+
+function parseTBResults(html, keyword) {
+  const items = [];
+  // 實際 HTML 格式: <a rel='nofollow' href=javascript:openWin('ShowDetail.ASP?RecNo=4742792') title='原公告日期 : 115/6/11'>機關:名稱</a>
+  // 注意: href 無引號。先抓整個 <a> 開頭 tag + 文字，再從 tag 內提取 RecNo 和 title
+  const linkRegex = /(<a\b[^>]+ShowDetail\.ASP\?RecNo=(\d+)[^>]*>)([^<]+)<\/a>/gi;
+
+  let m;
+  while ((m = linkRegex.exec(html)) !== null) {
+    const fullTag = m[1];
+    const recNo   = m[2];
+    const titleM  = fullTag.match(/title='([^']+)'/);
+    const titleAttr = titleM ? titleM[1] : '';
+    const rawText = m[3].replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+
+    // 移除末尾的更新日期 "(2026/6/23 更新)"
+    const cleanText = rawText.replace(/\s*\(\d{4}\/\d+\/\d+\s*更新\)\s*$/, '').trim();
+
+    // 格式通常是「機關名稱:標案名稱」
+    const colonIdx = cleanText.indexOf(':');
+    let agency = '', tenderName = '';
+    if (colonIdx > 0) {
+      agency = cleanText.slice(0, colonIdx).trim();
+      tenderName = cleanText.slice(colonIdx+1).trim();
+    } else {
+      tenderName = cleanText;
+    }
+
+    // 從 title 取公告日期 (格式: 原公告日期 : 115/6/11 → 轉西元)
+    let pubDate = '';
+    const dateM = titleAttr.match(/(\d{2,3})\/(\d{1,2})\/(\d{1,2})/);
+    if (dateM) {
+      const y = parseInt(dateM[1]) + 1911;
+      const mo = String(dateM[2]).padStart(2,'0');
+      const d  = String(dateM[3]).padStart(2,'0');
+      pubDate = `${y}/${mo}/${d}`;
+    }
+
+    const detailLink = `${TB_BASE}/ShowDetail.ASP?RecNo=${recNo}`;
+    items.push({
+      src: '公報網招標',
+      agency, tenderName,
+      tenderId: '', way: '', category: '', pubDate, amount: '',
+      detailLink, keyword
+    });
+  }
+  return items;
+}
+
+// ══════════════════════════════════════════════════════
+// 去重
+// ══════════════════════════════════════════════════════
+function dedup(allItems) {
+  const seen = new Set();
+  return allItems.filter(item => {
+    const key = `${item.src}|${item.tenderId || item.detailLink}|${item.tenderName.slice(0,10)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// 主流程
+// ══════════════════════════════════════════════════════
+async function startScraping() {
+  if (isRunning) return;
+
+  const keywordsRaw = document.getElementById('keywords').value;
+  const keywords = keywordsRaw.split(',').map(k=>k.trim()).filter(Boolean);
+  if (!keywords.length) { alert('請輸入至少一個關鍵字'); return; }
+
+  const usePCC = document.getElementById('srcPCC').checked;
+  const useTB  = document.getElementById('srcTB').checked;
+  if (!usePCC && !useTB) { alert('請至少勾選一個查詢來源'); return; }
+
+  // 計算日期範圍
+  const lookback = parseInt(document.getElementById('lookbackDays').value) || 90;
+  const endDt = new Date();
+  const startDt = new Date(endDt);
+  startDt.setDate(startDt.getDate() - lookback);
+  const startDate = dateToGregorian(startDt);
+  const endDate   = dateToGregorian(endDt);
+
+  isRunning = true; shouldStop = false; results = [];
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('log').style.display = 'none';
+  document.getElementById('resultsCard').style.display = 'none';
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('stopBtn').style.display = 'inline-flex';
+  document.getElementById('spinner').style.display = 'inline-block';
+  setProgress(2);
+  log(`查詢關鍵字：${keywords.join('、')}，日期：${startDate} ～ ${endDate}`, 'info');
+
+  const allItems = [];
+  const total = keywords.length * ((usePCC?1:0) + (useTB?1:0));
+  let done = 0;
+
+  for (const kw of keywords) {
+    if (shouldStop) break;
+
+    if (usePCC) {
+      try {
+        setStatus(`PCC 查詢「${kw}」…`);
+        const items = await fetchPCC(kw, startDate, endDate);
+        allItems.push(...items);
+      } catch(e) {
+        log(`[PCC] 「${kw}」錯誤：${e.message}`, 'err');
       }
+      done++;
+      setProgress(2 + 95 * done / total);
+      await delay(500, 1000);
     }
-    for (const label of labels) {
-      const esc = label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-      const m = html.match(new RegExp(esc+'[：:\\s]{0,5}([^<\\s&]{2,80})'));
-      if (m) return m[1].trim();
-    }
-    return '';
-  }
 
-  let pubDate = field('公布日期','公告日期','決標公告日期');
-  const tenId = field('採購案號','案號','標案案號');
-  const tenNm = field('採購名稱','標案名稱','案件名稱') || fallbackName;
-  if (!tenId) return null;
+    if (shouldStop) break;
 
-  if (pubDate) {
-    const m = pubDate.match(/(\d{2,4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
-    if (m) {
-      let y=parseInt(m[1]); if(y>1000) y-=1911;
-      pubDate = `${y}/${String(m[2]).padStart(2,'0')}/${String(m[3]).padStart(2,'0')}`;
-    }
-  }
-  return { publishDate:pubDate, tenderId:tenId, tenderName:tenNm };
-}
-
-// ═══════════════════════════════════════════════════════
-// 日期工具
-// ═══════════════════════════════════════════════════════
-function rocToJS(roc) { const [y,m,d]=roc.split('/').map(Number); return new Date(y+1911,m-1,d); }
-function jsToRoc(dt) { return `${dt.getFullYear()-1911}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`; }
-
-// ═══════════════════════════════════════════════════════
-// 階段四～五：政府採購網決標查詢
-// ═══════════════════════════════════════════════════════
-async function queryPCCAward(caseData) {
-  const { tenderId, publishDate, tenderName } = caseData;
-  const lb = parseInt(document.getElementById('lookbackDays').value)||180;
-  let endRoc='', startRoc='';
-  if (publishDate) {
-    const end=rocToJS(publishDate), start=new Date(end);
-    start.setDate(start.getDate()-lb);
-    startRoc=jsToRoc(start); endRoc=jsToRoc(end);
-  }
-  log(`[4] 查詢採購網：${tenderId}（${startRoc}～${endRoc}）`, 'step');
-
-  const qs = new URLSearchParams({ pkAtmMain:tenderId||'', tenderStartDate:startRoc, tenderEndDate:endRoc, radProc:'G' });
-  const html = await backendFetch(`${PCC_SEARCH}?${qs}`);
-  await delay();
-  const doc  = dom(html);
-
-  for (const row of doc.querySelectorAll('table tr')) {
-    const txt = row.textContent;
-    if (!(tenderId && txt.includes(tenderId)) && !(tenderName && txt.includes(tenderName.slice(0,6)))) continue;
-    const link = row.querySelector('a[href]');
-    if (!link) continue;
-    const href = link.getAttribute('href');
-    const detUrl = href.startsWith('http') ? href : 'https://web.pcc.gov.tw'+href;
-    log('  → 找到，進入決標公告', 'ok');
-    return await extractAwardInfo(detUrl, caseData);
-  }
-  log(`  ⚠ 採購網查無：${tenderId}`, 'warn');
-  return null;
-}
-
-async function extractAwardInfo(url, caseData) {
-  const html = await backendFetch(url);
-  const doc  = dom(html);
-
-  function field(...labels) {
-    for (const row of doc.querySelectorAll('tr')) {
-      const cells = Array.from(row.querySelectorAll('td,th'));
-      for (let i=0; i<cells.length; i++) {
-        const t = cells[i].textContent.replace(/\s+/g,'').trim();
-        if (labels.some(l => t===l||t.startsWith(l))) {
-          for (let j=i+1; j<cells.length; j++) {
-            const v=cells[j].textContent.replace(/\s+/g,' ').trim();
-            if(v&&v!==t) return v;
-          }
-        }
+    if (useTB) {
+      try {
+        setStatus(`公報網查詢「${kw}」…`);
+        const items = await fetchTaiwanBuying(kw);
+        allItems.push(...items);
+      } catch(e) {
+        log(`[公報網] 「${kw}」錯誤：${e.message}`, 'err');
       }
+      done++;
+      setProgress(2 + 95 * done / total);
+      await delay(600, 1200);
     }
-    for (const label of labels) {
-      const esc=label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-      const m=html.match(new RegExp(esc+'[：:\\s]{0,5}([^<]{2,100})'));
-      if(m) return m[1].replace(/\s+/g,' ').trim();
-    }
-    return '';
   }
 
-  return {
-    '機關名稱':         field('機關名稱') || agencyNameGlobal,
-    '決標日期':         field('決標日期','公告日期'),
-    '標案名稱':         field('標案名稱','採購名稱') || caseData.tenderName,
-    '投標廠商家數':     field('投標廠商家數','廠商家數'),
-    '新增公告傳輸次數': field('新增公告傳輸次數','傳輸次數'),
-    '得標廠商':         field('得標廠商','廠商名稱','廠商資料'),
-    '決標金額':         field('決標金額','決標價格'),
-    '_案號':   caseData.tenderId,
-    '_公布日期': caseData.publishDate,
-  };
+  results = dedup(allItems);
+  setProgress(100);
+
+  if (shouldStop) {
+    log(`⏹ 已停止，共 ${results.length} 筆`, 'warn');
+    setStatus(`已停止，共 ${results.length} 筆`);
+  } else {
+    log(`✅ 完成！共 ${results.length} 筆（PCC + 公報網）`, 'ok');
+    setStatus(`完成，共 ${results.length} 筆`);
+  }
+  renderResults();
+  isRunning = false;
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('stopBtn').style.display = 'none';
+  document.getElementById('spinner').style.display = 'none';
 }
 
-// ═══════════════════════════════════════════════════════
+function stopScraping() {
+  shouldStop = true;
+  log('使用者停止查詢…', 'warn');
+}
+
+// ══════════════════════════════════════════════════════
 // 匯出
-// ═══════════════════════════════════════════════════════
-const COLS = ['機關名稱','決標日期','標案名稱','投標廠商家數','新增公告傳輸次數','得標廠商','決標金額','來源案號','公布日期'];
-const rowArr = r => [r['機關名稱'],r['決標日期'],r['標案名稱'],r['投標廠商家數'],r['新增公告傳輸次數'],r['得標廠商'],r['決標金額'],r['_案號'],r['_公布日期']];
+// ══════════════════════════════════════════════════════
+const COLS = ['來源','機關名稱','標案名稱','案號','招標方式','公告/決標日期','決標金額','搜尋關鍵字','詳細連結'];
+function rowArr(r) {
+  return [r.src, r.agency, r.tenderName, r.tenderId, r.way, r.pubDate, r.amount, r.keyword, r.detailLink];
+}
 
 function downloadCSV() {
   const lines = [COLS.join(','), ...results.map(r => rowArr(r).map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(','))];
   const a = Object.assign(document.createElement('a'), {
     href: URL.createObjectURL(new Blob(['\uFEFF'+lines.join('\n')], {type:'text/csv;charset=utf-8'})),
-    download: `${agencyNameGlobal||'採購標案'}彙整.csv`
+    download: `採購標案彙整_${new Date().toISOString().slice(0,10)}.csv`
   });
   a.click();
 }
@@ -408,70 +495,54 @@ function downloadCSV() {
 function copyForSheets() {
   const tsv = [COLS.join('\t'), ...results.map(r=>rowArr(r).map(v=>v||'').join('\t'))].join('\n');
   navigator.clipboard.writeText(tsv)
-    .then(() => alert('✅ 已複製！到 Google Sheets 新工作表 A1 後 Ctrl+V 貼上。'))
-    .catch(() => alert('複製失敗，請改用下載 CSV'));
+    .then(() => alert('✅ 已複製！\n到 Google Sheets 選 A1 後 Ctrl+V（Mac: ⌘V）貼上。'))
+    .catch(() => {
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = tsv;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('✅ 已複製！');
+    });
 }
 
 function renderResults() {
   document.getElementById('resultsCard').style.display = 'block';
   document.getElementById('resultCount').textContent = `${results.length} 筆`;
   const c = document.getElementById('resultsTable');
-  if (!results.length) { c.innerHTML = '<div class="empty-state">📭 沒有找到符合條件的標案</div>'; return; }
+  if (!results.length) {
+    c.innerHTML = '<div class="empty-state">📭 沒有找到符合條件的標案</div>';
+    return;
+  }
   const t = document.createElement('table');
   const hr = t.createTHead().insertRow();
   COLS.forEach(h => { const th=document.createElement('th'); th.textContent=h; hr.appendChild(th); });
   const tb = t.createTBody();
-  results.forEach(r => { const tr=tb.insertRow(); rowArr(r).forEach(v=>{tr.insertCell().textContent=v||'—';}); });
-  c.innerHTML=''; c.appendChild(t);
-}
-
-// ═══════════════════════════════════════════════════════
-// 主流程
-// ═══════════════════════════════════════════════════════
-async function startScraping() {
-  if (isRunning) return;
-  const startUrl = document.getElementById('startUrl').value.trim();
-  if (!startUrl) { alert('請輸入採購網網址'); return; }
-
-  isRunning = true; results = []; agencyNameGlobal = '';
-  document.getElementById('log').innerHTML = '';
-  document.getElementById('log').style.display = 'none';
-  document.getElementById('resultsCard').style.display = 'none';
-  document.getElementById('startBtn').disabled = true;
-  document.getElementById('spinner').style.display = 'inline-block';
-  setProgress(3);
-
-  try {
-    setStatus('取得機關名稱…');
-    agencyNameGlobal = await getAgencyName(startUrl);
-    log(`機關名稱：${agencyNameGlobal}`, 'ok');
-    setProgress(12);
-
-    setStatus('搜尋公報網…');
-    const cases = await fetchMatchingCases(agencyNameGlobal);
-    setProgress(55);
-
-    for (let i=0; i<cases.length; i++) {
-      setStatus(`查詢決標 ${i+1}/${cases.length}…`);
-      setProgress(55 + 40*(i+1)/Math.max(cases.length,1));
-      try { const a=await queryPCCAward(cases[i]); if(a) results.push(a); }
-      catch(e) { log(`⚠ ${cases[i].tenderId}：${e.message}`, 'warn'); }
-      await delay(1500,3000);
-    }
-
-    setProgress(100);
-    log(`✅ 完成，共 ${results.length} 筆`, 'ok');
-    setStatus(`完成，共 ${results.length} 筆`);
-    renderResults();
-
-  } catch(e) {
-    log(`❌ ${e.message}`, 'err');
-    setStatus('發生錯誤');
-  } finally {
-    isRunning = false;
-    document.getElementById('startBtn').disabled = false;
-    document.getElementById('spinner').style.display = 'none';
-  }
+  results.forEach(r => {
+    const tr = tb.insertRow();
+    rowArr(r).forEach((v,i) => {
+      const td = tr.insertCell();
+      if (i === COLS.length-1 && v) {
+        // 詳細連結
+        const a = document.createElement('a');
+        a.href = v; a.target = '_blank'; a.textContent = '查看'; a.className = 'row-link';
+        td.appendChild(a);
+      } else if (i === 0) {
+        // 來源標籤
+        const span = document.createElement('span');
+        span.className = 'tag' + (v.includes('公報') ? ' tag-tb' : '');
+        span.textContent = v;
+        td.appendChild(span);
+      } else {
+        td.textContent = v || '—';
+        if (i === 1 || i === 4) td.className = 'nowrap';
+      }
+    });
+  });
+  c.innerHTML = '';
+  c.appendChild(t);
 }
 </script>
 </body>
