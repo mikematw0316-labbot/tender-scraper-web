@@ -108,9 +108,20 @@ async def stage1_get_agency(page, start_url: str) -> str:
             pass
 
     content = await page.content()
+    # Debug: print page URL and snippet to diagnose rendering
+    print(f"[Stage 1] 當前URL：{page.url}")
+    print(f"[Stage 1] 頁面大小：{len(content)} bytes")
+    idx = content.find("機關名稱")
+    if idx >= 0:
+        print(f"[Stage 1] 機關名稱@{idx}: {repr(content[max(0,idx-30):idx+200])}")
+    else:
+        print(f"[Stage 1] 頁面中無「機關名稱」，前1000字：{content[:1000]}")
+
     for pat in [
         r"機關名稱[：:]\s*</[^>]+>\s*<[^>]+>\s*([^<\s]{2,30})",
         r"機關名稱[：:\s]*([^\s<&\n]{2,30})",
+        r"機關名稱\s*</[^>]+>[^<]*<[^>]+>\s*([^<\s]{2,30})",
+        r"機關名稱[\s\S]{0,100}?>\s*([^\s<]{2,30})\s*</",
     ]:
         m = re.search(pat, content)
         if m:
