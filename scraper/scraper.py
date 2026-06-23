@@ -87,9 +87,18 @@ async def stage1_get_agency(page, start_url: str) -> str:
     print(f"[Stage 1] 訪問：{start_url}")
     await page.goto(start_url, wait_until="domcontentloaded", timeout=30000)
     try:
-        await page.wait_for_load_state("networkidle", timeout=12000)
+        await page.wait_for_load_state("networkidle", timeout=15000)
     except PlaywrightTimeoutError:
         pass
+    # PCC pages are JS-rendered; wait until '機關名稱' appears in DOM
+    try:
+        await page.wait_for_function(
+            "() => document.body.innerText.includes('機關名稱')",
+            timeout=20000,
+        )
+    except PlaywrightTimeoutError:
+        pass
+    await rand_sleep(1.0, 2.0)
 
     for sel in [
         "th:has-text('機關名稱') + td",
