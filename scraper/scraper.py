@@ -85,21 +85,53 @@ def parse_date_to_gregorian(date_raw: str) -> str:
 # ─────────────────────────────────────────
 async def stage1_get_agency(page, start_url: str) -> str:
     print(f"[Stage 1] 訪問：{start_url}")
+
+    # Intercept all responses to catch the AJAX API that returns tender data
+    api_bodies: list[tuple[str, str]] = []  # (url, body_text)
+
+    async def capture_response(response):
+        url = response.url
+        ct = response.headers.get("content-type", "")
+        if not ("json" in ct or "html" in ct or "text" in ct):
+            return
+        try:
+            body = await response.body()
+            if b"\xe6\xa9\x9f\xe9\x97\x9c" in body or b"unitName" in body or b"\xe6\xa9\x9f\xe9\x97\x9c\xe5\x90\x8d\xe7\xa8\xb1" in body:
+                text = body.decode("utf-8", errors="replace")
+                api_bodies.append((url, text))
+                print(f"[Stage 1] API hit: {url[:120]}")
+        except Exception:
+            pass
+
+    page.on("response", capture_response)
+
     await page.goto(start_url, wait_until="domcontentloaded", timeout=30000)
     try:
-        await page.wait_for_load_state("networkidle", timeout=15000)
+        await page.wait_for_load_state("networkidle", timeout=20000)
     except PlaywrightTimeoutError:
         pass
-    # PCC pages are JS-rendered; wait until '機關名稱' appears in DOM
-    try:
-        await page.wait_for_function(
-            "() => document.body.innerText.includes('機關名稱')",
-            timeout=20000,
-        )
-    except PlaywrightTimeoutError:
-        pass
-    await rand_sleep(1.0, 2.0)
+    await rand_sleep(2.0, 3.0)  # extra time for AJAX to complete
 
+    # Try to extract from intercepted API response first
+    for api_url, body in api_bodies:
+        # Try JSON field
+        for key in ["unitName", "orgName", "unitname", "organ", "機關名稱"]:
+            m = re.search(rf'"{re.escape(key)}"\s*:\s*"([^"{{}}]+)"', body)
+            if m:
+                agency = m.group(1).strip()
+                if agency and len(agency) > 1:
+                    print(f"[Stage 1] 機關名稱(API)：{agency}")
+                    return agency
+        # Try HTML pattern
+        m = re.search(r"機關名稱[\s\S]{0,50}?>([^<]{2,30})<", body)
+        if m:
+            agency = m.group(1).strip()
+            if agency and len(agency) > 1:
+                print(f"[Stage 1] 機關名稱(API-html)：{agency}")
+                return agency
+        print(f"[Stage 1] API body snippet: {body[:300]}")
+
+    # Fallback: try DOM selectors
     for sel in [
         "th:has-text('機關名稱') + td",
         "td:has-text('機關名稱') + td",
@@ -111,33 +143,17 @@ async def stage1_get_agency(page, start_url: str) -> str:
             if await loc.count() > 0:
                 text = (await loc.inner_text()).strip()
                 if text and len(text) > 1:
-                    print(f"[Stage 1] 機關名稱：{text}")
+                    print(f"[Stage 1] 機關名稱(DOM)：{text}")
                     return text
         except Exception:
             pass
 
+    # Regex fallback on page HTML
     content = await page.content()
-    # Debug: print page URL and content to diagnose rendering
-    print(f"[Stage 1] 當前URL：{page.url}")
-    print(f"[Stage 1] 頁面大小：{len(content)} bytes")
-    idx = content.find("機關名稱")
-    if idx >= 0:
-        print(f"[Stage 1] 機關名稱@{idx}: {repr(content[max(0,idx-30):idx+200])}")
-    else:
-        # Print plain text to see what labels are present
-        plain = re.sub(r'<[^>]+>', ' ', content)
-        plain = re.sub(r'\s+', ' ', plain).strip()
-        print(f"[Stage 1] 頁面純文字(前2000): {plain[:2000]}")
-        # Also find any XHR/fetch endpoints in JS
-        for js_pat in [r"'(/[^']{5,80})'", r'"(/[^"]{5,80})"']:
-            for ep in re.findall(js_pat, content)[:20]:
-                if any(k in ep for k in ['tender', 'bulletin', 'query', 'get', 'json']):
-                    print(f"[Stage 1] JS端點: {ep}")
-
+    print(f"[Stage 1] 頁面大小：{len(content)}b，API回應數：{len(api_bodies)}")
     for pat in [
         r"機關名稱[：:]\s*</[^>]+>\s*<[^>]+>\s*([^<\s]{2,30})",
         r"機關名稱[：:\s]*([^\s<&\n]{2,30})",
-        r"機關名稱\s*</[^>]+>[^<]*<[^>]+>\s*([^<\s]{2,30})",
         r"機關名稱[\s\S]{0,100}?>\s*([^\s<]{2,30})\s*</",
     ]:
         m = re.search(pat, content)
